@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Vizit</title>
+<style>
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.8.0/plotly.min.js'></script>
+</head>
+<body>
+<input type="file" id="files" name="files[]" multiple />
+<script>
+function handleFileSelect(evt) {
+  var file = evt.target.files[0]; // File
+  Papa.parse(file, {
+    header: false,
+    complete: function(results) {
+      header = results.data[0];
+      lat_idx = header.indexOf('latitude');
+      lng_idx = header.indexOf('longitude');
+      cap_idx = header.indexOf('cap_sc(MW)');
+    }
+  });
+}
+document.getElementById('files').addEventListener('change', handleFileSelect, false);
+</script>
+</body>
+</html>
