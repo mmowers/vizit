@@ -3,13 +3,34 @@
 <head>
 <title>Vizit</title>
 <style>
+#map {
+  height: 100%;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
 <script src='https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.8.0/plotly.min.js'></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+<script>
+function initMap() {
+  // Create the map.
+  farmMap = new google.maps.Map(document.getElementById("map"), {
+    zoom: 4,
+    center: { lat: 37.09, lng: -95.712 },
+    mapTypeId: "terrain",
+  });
+}
+</script>
 </head>
 <body>
 <input type="file" id="files" name="files[]" multiple />
+<div id="map"></div>
 <script>
 function handleFileSelect(evt) {
   var file = evt.target.files[0]; // File
@@ -19,11 +40,29 @@ function handleFileSelect(evt) {
       header = results.data[0];
       lat_idx = header.indexOf('latitude');
       lng_idx = header.indexOf('longitude');
-      cap_idx = header.indexOf('cap_sc(MW)');
+      cap_idx = header.indexOf('cap_sc(MW)'); //offshore is .18816 km2 per MW. Onshore is 0.33333 km2 per MW
+      arrayLength  = results.data.length;
+      //Add the circles to map
+      for (var i = 1; i < arrayLength; i++) {
+        var thisLat = parseFloat(results.data[i][lat_idx]);
+        var thisLng = parseFloat(results.data[i][lng_idx]);
+        var thisCap = parseFloat(results.data[i][cap_idx]);
+        farmCircle = new google.maps.Circle({
+          strokeColor: "#FF0000",
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: "#FF0000",
+          fillOpacity: 0.35,
+          map:farmMap,
+          center: {lat: thisLat, lng: thisLng},
+          radius: Math.sqrt(thisCap*.3333/Math.PI)*1000,
+        });
+      }
     }
   });
 }
 document.getElementById('files').addEventListener('change', handleFileSelect, false);
 </script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&callback=initMap&v=weekly" async></script>
 </body>
 </html>
