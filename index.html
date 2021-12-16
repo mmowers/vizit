@@ -32,31 +32,40 @@ function initMap() {
 <input type="file" id="files" name="files[]" multiple />
 <div id="map"></div>
 <script>
+function farmCircleListener(){
+  alert(this.customText);
+}
 function handleFileSelect(evt) {
   var file = evt.target.files[0]; // File
   Papa.parse(file, {
     header: false,
     complete: function(results) {
       header = results.data[0];
-      lat_idx = header.indexOf('latitude');
-      lng_idx = header.indexOf('longitude');
-      cap_idx = header.indexOf('cap_sc(MW)'); //offshore is .18816 km2 per MW. Onshore is 0.33333 km2 per MW
+      var colidx = {};
+      for (var i = 0; i < header.length; i++){
+        colidx[header[i]] = i;
+      }
       arrayLength  = results.data.length;
       //Add the circles to map
-      for (var i = 1; i < arrayLength; i++) {
-        var thisLat = parseFloat(results.data[i][lat_idx]);
-        var thisLng = parseFloat(results.data[i][lng_idx]);
-        var thisCap = parseFloat(results.data[i][cap_idx]);
+      for (var i = 1; i < arrayLength - 1; i++) {
+        var thisLat = parseFloat(results.data[i][colidx['latitude']]);
+        var thisLng = parseFloat(results.data[i][colidx['longitude']]);
+        var thisCap = parseFloat(results.data[i][colidx['cap_sc(MW)']]);
+        var thisMetric = parseFloat(results.data[i][colidx['reduced_cost($_per_kW)']]);
+        var thisDens = results.data[i][colidx['type']] == 'offshore' ? .18816 : 0.33333; //offshore is .18816 km2 per MW. Onshore is 0.33333 km2 per MW
         farmCircle = new google.maps.Circle({
-          strokeColor: "#FF0000",
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
+          strokeWeight: 0,
           fillColor: "#FF0000",
-          fillOpacity: 0.35,
+          fillOpacity: -1/2000*thisMetric + 1, //y=mx + b, where y is opacity, from 0 to 1.
           map:farmMap,
           center: {lat: thisLat, lng: thisLng},
-          radius: Math.sqrt(thisCap*.3333/Math.PI)*1000,
+          radius: Math.sqrt(thisCap*thisDens/Math.PI)*1000,
+          customText: 'Reduced Cost: ' + thisMetric + ' $/kW',
         });
+        google.maps.event.addListener(farmCircle, 'click', farmCircleListener);
+        // farmCircle.addListener("click", () => {
+        //   var x = 'hi';
+        // });
       }
     }
   });
