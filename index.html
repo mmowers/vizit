@@ -3,75 +3,173 @@
 <head>
 <title>Vizit</title>
 <style>
-#map {
-  height: 100%;
+label {
+  font-weight: bold;
 }
-html,
-body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
+.chart-title{
+  font-weight: bold;
+  text-decoration: underline;
+}
+.chart{
+  width: 300px;
+  height: 300px;
+  float: left;
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
 <script src='https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.8.0/plotly.min.js'></script>
 <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
-<script>
-function initMap() {
-  // Create the map.
-  farmMap = new google.maps.Map(document.getElementById("map"), {
-    zoom: 4,
-    center: { lat: 37.09, lng: -95.712 },
-    mapTypeId: "terrain",
-  });
-}
-</script>
 </head>
 <body>
-<input type="file" id="files" name="files[]" multiple />
-<div id="map"></div>
+<div id="controls">
+  <label for="file-input">Data sources:</label><br>
+  <input type="file" id="file-input" name="files[]" multiple />
+  <ul id="file-list">(no files selected)</ul>
+  <div id="chart-controls"></div>
+  <button id="add-chart">Add Chart</button>
+</div>
+<div id="outputs">
+</div>
 <script>
-function farmCircleListener(){
-  alert(this.customText);
-}
-function handleFileSelect(evt) {
-  var file = evt.target.files[0]; // File
-  Papa.parse(file, {
+var files = {};
+var fileNames = []; //sorted alphabetically
+var config = {files:[], charts:[]};
+var chartTypes = ['dot','line','lineDot','bar'];
+// var trace1 = {
+//   x: [1, 2, 3],
+//   y: [4, 5, 6],
+//   type: 'scatter',
+// };
+
+// var trace2 = {
+//   x: [20, 30, 40],
+//   y: [50, 60, 70],
+//   // xaxis: 'x2',
+//   // yaxis: 'y2',
+//   type: 'scatter',
+// };
+
+// var data = [trace1];
+// var data2 = [trace2];
+// var layout = {
+//   font: {
+//     family: 'Courier New, monospace',
+//     size: 14,
+//     color: '#7f7f7f'
+//   },
+//   margin: {
+//     l: 0,
+//     r: 0,
+//     b: 0,
+//     t: 40,
+//   },
+//   title: {
+//     text: 'what is it',
+//     yref: "paper",
+//     y : 1,
+//     yanchor: "bottom",
+//     pad: {
+//       b: 5,
+//     },
+//   },
+//   yaxis: {
+//     title: {
+//       text: 'y Axis',
+//     },
+//     automargin: true,
+//   },
+//   xaxis: {
+//     title: {
+//       text: 'y Axis',
+//     },
+//     automargin: true,
+//   }
+//   // grid: {rows: 1, columns: 2, pattern: 'independent'},
+// };
+// $('#outputs').append('<div id="myDiv" class="chart"></div>');
+// Plotly.newPlot('myDiv', data, layout, {editable: true});
+// $('#outputs').append('<div id="myDiv2" class="chart"></div>');
+// Plotly.newPlot('myDiv2', data2, layout, {editable: true});
+
+$('#file-input').change(function(evt){
+  var newFiles = Array.from(evt.target.files);
+  for(var i = 0; i < newFiles.length; i++){
+    //If the file already exists, remove the old version
+    if(newFiles[i].name in files){
+      delete files[newFiles[i].name];
+    }
+    //Regardless, add the new file to the files object
+    files[newFiles[i].name] = {}
+    files[newFiles[i].name].fileObj = newFiles[i];
+  }
+  //Show files in html, sorted alphabetically
+  $('#file-list').empty();
+  fileNames = Object.keys(files).sort();
+  for(var fileName of fileNames){
+    $('#file-list').append(`<li>${fileName}</li>`);
+  }
+  config.files = fileNames;
+});
+$('#add-chart').click(function(){
+  var idx = config.charts.length;
+  config.charts.push({});
+  var optionsHtml = `<option value="none">none</option>`;
+  for(var fileName of fileNames){
+    optionsHtml += `<option value="${fileName}">${fileName}</option>`;
+  }
+  var html = `
+    <form id="chart-${idx}">
+      <div class="chart-title">Chart ${idx}</div>
+      <label>Data source:</label>
+      <select class="data-source">${optionsHtml}</select>
+    </form>
+  `;
+  $('#chart-controls').append(html);
+});
+$('#chart-controls').on('change','.data-source', function(){
+  var selectFile = $(this).val();
+  window.chartIdx = parseInt(this.form.id.replace('chart-','')); //has to be global or i can't access it within function.
+  if(!fileNames.includes(selectFile)){
+    return;
+  }
+  //TODO: we shouldn't grab file data if we have done so already for another chart.
+  Papa.parse(files[selectFile].fileObj, {
     header: false,
-    complete: function(results) {
-      header = results.data[0];
+    complete: function(results, file) {
+      //Get header and use to find column indices
+      var header = results.data[0];
+      files[selectFile].data = results.data;
+      files[selectFile].header = header;
       var colidx = {};
       for (var i = 0; i < header.length; i++){
         colidx[header[i]] = i;
       }
-      arrayLength  = results.data.length;
-      //Add the circles to map
-      for (var i = 1; i < arrayLength - 1; i++) {
-        var thisLat = parseFloat(results.data[i][colidx['latitude']]);
-        var thisLng = parseFloat(results.data[i][colidx['longitude']]);
-        var thisCap = parseFloat(results.data[i][colidx['cap_sc(MW)']]);
-        var thisMetric = parseFloat(results.data[i][colidx['reduced_cost($_per_kW)']]);
-        var thisDens = results.data[i][colidx['type']] == 'offshore' ? .18816 : 0.33333; //offshore is .18816 km2 per MW. Onshore is 0.33333 km2 per MW
-        farmCircle = new google.maps.Circle({
-          strokeWeight: 0,
-          fillColor: "#FF0000",
-          fillOpacity: -1/2000*thisMetric + 1, //y=mx + b, where y is opacity, from 0 to 1.
-          map:farmMap,
-          center: {lat: thisLat, lng: thisLng},
-          radius: Math.sqrt(thisCap*thisDens/Math.PI)*1000,
-          customText: 'Reduced Cost: ' + thisMetric + ' $/kW',
-        });
-        google.maps.event.addListener(farmCircle, 'click', farmCircleListener);
-        // farmCircle.addListener("click", () => {
-        //   var x = 'hi';
-        // });
+      var arrayLength  = results.data.length;
+      $(`#chart-${chartIdx}-controls`).remove()
+      var optionsHtml = `<option value="none">none</option>`;
+      for (var i = 0; i < header.length; i++){
+        optionsHtml+= `<option value="${i}">${header[i]}</option>`;
       }
+      //Add controls for x axis, y axis, color, style, row, column
+      var html = `
+        <div id="chart-${chartIdx}-controls" class="chart-ind-controls">
+          <label>X axis:</label>
+          <select class="chart-x">${optionsHtml}</select>
+          <label>Y axis:</label>
+          <select class="chart-y">${optionsHtml}</select>
+          <label>Colors:</label>
+          <select class="chart-c">${optionsHtml}</select>
+      `;
+      $('#chart-'+chartIdx).append(html);
     }
   });
-}
-document.getElementById('files').addEventListener('change', handleFileSelect, false);
+});
+
+$('#chart-controls').on('change','.chart-ind-controls select', function(){
+
+});
+
 </script>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&callback=initMap&v=weekly" async></script>
 </body>
 </html>
