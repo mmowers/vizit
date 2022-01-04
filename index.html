@@ -35,7 +35,7 @@ label {
 var files = {};
 var fileNames = []; //sorted alphabetically
 var config = {files:[], charts:[]};
-var chartTypes = ['dot','line','lineDot','bar'];
+var chartTypes = ['dot','line','line dot','stacked bar','grouped bar'];
 // var trace1 = {
 //   x: [1, 2, 3],
 //   y: [4, 5, 6],
@@ -129,7 +129,7 @@ $('#add-chart').click(function(){
 });
 $('#chart-controls').on('change','.data-source', function(){
   var selectFile = $(this).val();
-  window.chartIdx = parseInt(this.form.id.replace('chart-','')); //has to be global or i can't access it within function.
+  var chartIdx = parseInt(this.form.id.replace('chart-',''));
   if(!fileNames.includes(selectFile)){
     return;
   }
