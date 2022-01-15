@@ -32,17 +32,18 @@ label {
 <div id="outputs">
 </div>
 <script>
-var files = {};
-var fileNames = []; //sorted alphabetically
-var config = {files:[], charts:[]};
-var chartTypes = ['dot','line','line dot','stacked bar','grouped bar'];
-// var trace1 = {
+'use strict';
+let files = {};
+let fileNames = []; //sorted alphabetically
+let config = {files:[], charts:[]};
+const chartTypes = ['dot','line','line dot','stacked bar','grouped bar'];
+// let trace1 = {
 //   x: [1, 2, 3],
 //   y: [4, 5, 6],
 //   type: 'scatter',
 // };
 
-// var trace2 = {
+// let trace2 = {
 //   x: [20, 30, 40],
 //   y: [50, 60, 70],
 //   // xaxis: 'x2',
@@ -50,9 +51,9 @@ var chartTypes = ['dot','line','line dot','stacked bar','grouped bar'];
 //   type: 'scatter',
 // };
 
-// var data = [trace1];
-// var data2 = [trace2];
-// var layout = {
+// let data = [trace1];
+// let data2 = [trace2];
+// let layout = {
 //   font: {
 //     family: 'Courier New, monospace',
 //     size: 14,
@@ -93,8 +94,8 @@ var chartTypes = ['dot','line','line dot','stacked bar','grouped bar'];
 // Plotly.newPlot('myDiv2', data2, layout, {editable: true});
 
 $('#file-input').change(function(evt){
-  var newFiles = Array.from(evt.target.files);
-  for(var i = 0; i < newFiles.length; i++){
+  let newFiles = Array.from(evt.target.files);
+  for(let i = 0; i < newFiles.length; i++){
     //If the file already exists, remove the old version
     if(newFiles[i].name in files){
       delete files[newFiles[i].name];
@@ -106,19 +107,19 @@ $('#file-input').change(function(evt){
   //Show files in html, sorted alphabetically
   $('#file-list').empty();
   fileNames = Object.keys(files).sort();
-  for(var fileName of fileNames){
+  for(let fileName of fileNames){
     $('#file-list').append(`<li>${fileName}</li>`);
   }
   config.files = fileNames;
 });
 $('#add-chart').click(function(){
-  var idx = config.charts.length;
+  let idx = config.charts.length;
   config.charts.push({});
-  var optionsHtml = `<option value="none">none</option>`;
-  for(var fileName of fileNames){
+  let optionsHtml = `<option value="none">none</option>`;
+  for(let fileName of fileNames){
     optionsHtml += `<option value="${fileName}">${fileName}</option>`;
   }
-  var html = `
+  let html = `
     <form id="chart-${idx}">
       <div class="chart-title">Chart ${idx}</div>
       <label>Data source:</label>
@@ -128,8 +129,8 @@ $('#add-chart').click(function(){
   $('#chart-controls').append(html);
 });
 $('#chart-controls').on('change','.data-source', function(){
-  var selectFile = $(this).val();
-  var chartIdx = parseInt(this.form.id.replace('chart-',''));
+  let selectFile = $(this).val();
+  let chartIdx = parseInt(this.form.id.replace('chart-',''));
   if(!fileNames.includes(selectFile)){
     return;
   }
@@ -138,21 +139,21 @@ $('#chart-controls').on('change','.data-source', function(){
     header: false,
     complete: function(results, file) {
       //Get header and use to find column indices
-      var header = results.data[0];
+      let header = results.data[0];
       files[selectFile].data = results.data;
       files[selectFile].header = header;
-      var colidx = {};
-      for (var i = 0; i < header.length; i++){
+      let colidx = {};
+      for (let i = 0; i < header.length; i++){
         colidx[header[i]] = i;
       }
-      var arrayLength  = results.data.length;
+      let arrayLength  = results.data.length;
       $(`#chart-${chartIdx}-controls`).remove()
-      var optionsHtml = `<option value="none">none</option>`;
-      for (var i = 0; i < header.length; i++){
+      let optionsHtml = `<option value="none">none</option>`;
+      for (let i = 0; i < header.length; i++){
         optionsHtml+= `<option value="${i}">${header[i]}</option>`;
       }
       //Add controls for x axis, y axis, color, style, row, column
-      var html = `
+      let html = `
         <div id="chart-${chartIdx}-controls" class="chart-ind-controls">
           <label>X axis:</label>
           <select class="chart-x">${optionsHtml}</select>
