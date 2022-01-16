@@ -6,7 +6,9 @@
 label {
   font-weight: bold;
 }
-.chart-title{
+.dashboard-title,
+.chart-title,
+.trace-title{
   font-weight: bold;
   text-decoration: underline;
 }
@@ -26,8 +28,9 @@ label {
   <label for="file-input">Data sources:</label><br>
   <input type="file" id="file-input" name="files[]" multiple />
   <ul id="file-list">(no files selected)</ul>
-  <div id="chart-controls"></div>
-  <button id="add-chart">Add Chart</button>
+  <div id="report-controls">
+    <button class="add-dashboard">Add Dashboard</button>
+  </div>
 </div>
 <div id="outputs">
 </div>
@@ -35,7 +38,7 @@ label {
 'use strict';
 let files = {};
 let fileNames = []; //sorted alphabetically
-let config = {files:[], charts:[]};
+let config = {files:[], dashboards:[]};
 const chartTypes = ['dot','line','line dot','stacked bar','grouped bar'];
 // let trace1 = {
 //   x: [1, 2, 3],
@@ -112,25 +115,49 @@ $('#file-input').change(function(evt){
   }
   config.files = fileNames;
 });
-$('#add-chart').click(function(){
-  let idx = config.charts.length;
-  config.charts.push({});
+
+$('#report-controls').on('click','.add-dashboard', function(){
+  let dash_idx = config.dashboards.length;
+  config.dashboards[dash_idx] = {charts:[]};
+  $(this).before(`
+    <div data-dashboard-id="${dash_idx}" class="dashboard-controls">
+      <div class="dashboard-title">Dashboard ${dash_idx}</div>
+      <button class="add-chart">Add Chart</button>
+    </div>
+  `);
+});
+$('#report-controls').on('click','.add-chart', function(){
+  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboard-id'));
+  let chart_idx = config.dashboards[dash_idx].charts.length;
+  config.dashboards[dash_idx].charts[chart_idx] = {traces:[]};
+  $(this).before(`
+    <div data-chart-id="${chart_idx}" class="chart-controls">
+      <div class="chart-title">Chart ${chart_idx}</div>
+      <button class="add-trace">Add Trace</button>
+    </div>
+  `);
+});
+
+  $('#report-controls').on('click','.add-trace', function(){
+  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboard-id'));
+  let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chart-id'));
+  let trace_idx = config.dashboards[dash_idx].charts[chart_idx].traces.length;
   let optionsHtml = `<option value="none">none</option>`;
   for(let fileName of fileNames){
     optionsHtml += `<option value="${fileName}">${fileName}</option>`;
   }
   let html = `
-    <form id="chart-${idx}">
-      <div class="chart-title">Chart ${idx}</div>
+    <form class="trace-controls" data-trace-id="${trace_idx}">
+      <div class="trace-title">Trace ${trace_idx}</div>
       <label>Data source:</label>
       <select class="data-source">${optionsHtml}</select>
     </form>
   `;
-  $('#chart-controls').append(html);
+  $(this).before(html);
 });
-$('#chart-controls').on('change','.data-source', function(){
+$('#report-controls').on('change','.data-source', function(){
   let selectFile = $(this).val();
-  let chartIdx = parseInt(this.form.id.replace('chart-',''));
+  let thisTraceDiv = $(this).parent();
   if(!fileNames.includes(selectFile)){
     return;
   }
@@ -147,14 +174,14 @@ $('#chart-controls').on('change','.data-source', function(){
         colidx[header[i]] = i;
       }
       let arrayLength  = results.data.length;
-      $(`#chart-${chartIdx}-controls`).remove()
+      thisTraceDiv.find('.trace-ind-controls').remove()
       let optionsHtml = `<option value="none">none</option>`;
       for (let i = 0; i < header.length; i++){
         optionsHtml+= `<option value="${i}">${header[i]}</option>`;
       }
       //Add controls for x axis, y axis, color, style, row, column
       let html = `
-        <div id="chart-${chartIdx}-controls" class="chart-ind-controls">
+        <div class="trace-ind-controls">
           <label>X axis:</label>
           <select class="chart-x">${optionsHtml}</select>
           <label>Y axis:</label>
@@ -162,12 +189,12 @@ $('#chart-controls').on('change','.data-source', function(){
           <label>Colors:</label>
           <select class="chart-c">${optionsHtml}</select>
       `;
-      $('#chart-'+chartIdx).append(html);
+      thisTraceDiv.append(html);
     }
   });
 });
 
-$('#chart-controls').on('change','.chart-ind-controls select', function(){
+$('#report-controls').on('change','.trace-ind-controls select', function(){
 
 });
 
