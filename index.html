@@ -12,6 +12,13 @@ label {
   font-weight: bold;
   text-decoration: underline;
 }
+
+.dashboard-controls,
+.chart-controls,
+.trace-controls{
+  margin-bottom:20px;
+}
+
 .chart{
   width: 300px;
   height: 300px;
@@ -36,10 +43,32 @@ label {
 </div>
 <script>
 'use strict';
-let files = {};
+const files = {};
 let fileNames = []; //sorted alphabetically
-let config = {files:[], dashboards:[]};
-const chartTypes = ['dot','line','line dot','stacked bar','grouped bar'];
+const config = {files:[], dashboards:[]};
+const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
+const aggData = []; //If we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column
+let plotlySchema = {};
+
+// Grab plotly schema synchronously. First set the global configs to synchronous, then json request, then flip back to async.
+$.ajaxSetup({async: false});
+$.getJSON('https://raw.githubusercontent.com/plotly/plotly.js/master/dist/plot-schema.json', function(data) {
+  plotlySchema = data;
+});
+$.ajaxSetup({async: true});
+
+const chartTypes = ['dot','line','bar','map'];
+// const chartTypes = {
+//   dot:{
+//     attributes:{
+//       type:'scatter',
+//       mode:'markers',
+//     }
+//   },'line','linedot','bar','map'
+// };
+
+
+
 // let trace1 = {
 //   x: [1, 2, 3],
 //   y: [4, 5, 6],
@@ -120,18 +149,18 @@ $('#report-controls').on('click','.add-dashboard', function(){
   let dash_idx = config.dashboards.length;
   config.dashboards[dash_idx] = {charts:[]};
   $(this).before(`
-    <div data-dashboard-id="${dash_idx}" class="dashboard-controls">
+    <div data-dashboardID="${dash_idx}" class="dashboard-controls">
       <div class="dashboard-title">Dashboard ${dash_idx}</div>
       <button class="add-chart">Add Chart</button>
     </div>
   `);
 });
 $('#report-controls').on('click','.add-chart', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboard-id'));
+  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
   let chart_idx = config.dashboards[dash_idx].charts.length;
   config.dashboards[dash_idx].charts[chart_idx] = {traces:[]};
   $(this).before(`
-    <div data-chart-id="${chart_idx}" class="chart-controls">
+    <div data-chartID="${chart_idx}" class="chart-controls">
       <div class="chart-title">Chart ${chart_idx}</div>
       <button class="add-trace">Add Trace</button>
     </div>
@@ -139,15 +168,16 @@ $('#report-controls').on('click','.add-chart', function(){
 });
 
   $('#report-controls').on('click','.add-trace', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboard-id'));
-  let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chart-id'));
+  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
+  let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
   let trace_idx = config.dashboards[dash_idx].charts[chart_idx].traces.length;
+  config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx] = {};
   let optionsHtml = `<option value="none">none</option>`;
   for(let fileName of fileNames){
     optionsHtml += `<option value="${fileName}">${fileName}</option>`;
   }
   let html = `
-    <form class="trace-controls" data-trace-id="${trace_idx}">
+    <form class="trace-controls" data-traceID="${trace_idx}">
       <div class="trace-title">Trace ${trace_idx}</div>
       <label>Data source:</label>
       <select class="data-source">${optionsHtml}</select>
@@ -156,7 +186,11 @@ $('#report-controls').on('click','.add-chart', function(){
   $(this).before(html);
 });
 $('#report-controls').on('change','.data-source', function(){
+  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
+  let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
+  let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
   let selectFile = $(this).val();
+  config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx].dataSource = selectFile;
   let thisTraceDiv = $(this).parent();
   if(!fileNames.includes(selectFile)){
     return;
@@ -174,20 +208,26 @@ $('#report-controls').on('change','.data-source', function(){
         colidx[header[i]] = i;
       }
       let arrayLength  = results.data.length;
-      thisTraceDiv.find('.trace-ind-controls').remove()
+      thisTraceDiv.children('.trace-ind-controls').remove()
       let optionsHtml = `<option value="none">none</option>`;
       for (let i = 0; i < header.length; i++){
-        optionsHtml+= `<option value="${i}">${header[i]}</option>`;
+        optionsHtml+= `<option value="${header[i]}">${header[i]}</option>`;
+      }
+      let chartTypeHtml = ``;
+      for (let i = 0; i < chartTypes.length; i++){
+        chartTypeHtml+= `<option value="${chartTypes[i]}">${chartTypes[i]}</option>`;
       }
       //Add controls for x axis, y axis, color, style, row, column
       let html = `
         <div class="trace-ind-controls">
+          <label>Chart Type:</label>
+          <select data-config="type">${chartTypeHtml}</select>
           <label>X axis:</label>
-          <select class="chart-x">${optionsHtml}</select>
+          <select data-config="x">${optionsHtml}</select>
           <label>Y axis:</label>
-          <select class="chart-y">${optionsHtml}</select>
-          <label>Colors:</label>
-          <select class="chart-c">${optionsHtml}</select>
+          <select data-config="y">${optionsHtml}</select>
+          <label>Series:</label>
+          <select data-config="series">${optionsHtml}</select>
       `;
       thisTraceDiv.append(html);
     }
@@ -195,8 +235,27 @@ $('#report-controls').on('change','.data-source', function(){
 });
 
 $('#report-controls').on('change','.trace-ind-controls select', function(){
+  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
+  let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
+  let trace_idx = parseInt($(this).parents('.chart-controls').attr('data-traceID'));
 
+  // config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx] = ;
 });
+
+function transpose(matrix_in) {
+  const rows = matrix_in.length;
+  const cols = matrix_in[0].length;
+  const matrix_out = [];
+  for (let i = 0; i < cols; i++) {
+    matrix_out[i] = Array(rows);
+  }
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      matrix_out[j][i] = matrix_in[i][j];
+    }
+  }
+  return matrix_out;
+}
 
 </script>
 </body>
