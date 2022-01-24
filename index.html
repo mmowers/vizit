@@ -133,8 +133,7 @@ $('#file-input').change(function(evt){
       delete files[newFiles[i].name];
     }
     //Regardless, add the new file to the files object
-    files[newFiles[i].name] = {}
-    files[newFiles[i].name].fileObj = newFiles[i];
+    files[newFiles[i].name] = newFiles[i];
   }
   //Show files in html, sorted alphabetically
   $('#file-list').empty();
@@ -195,51 +194,55 @@ $('#report-controls').on('change','.data-source', function(){
   if(!fileNames.includes(selectFile)){
     return;
   }
-  //TODO: we shouldn't grab file data if we have done so already for another chart.
-  Papa.parse(files[selectFile].fileObj, {
+  if(selectFile in rawData){
+    buildTraceControls(thisTraceDiv, selectFile);
+    return;
+  }
+  //If we haven't already gotten the file, grab the data.
+  Papa.parse(files[selectFile], {
     header: false,
     complete: function(results, file) {
-      //Get header and use to find column indices
-      let header = results.data[0];
-      files[selectFile].data = results.data;
-      files[selectFile].header = header;
-      let colidx = {};
-      for (let i = 0; i < header.length; i++){
-        colidx[header[i]] = i;
-      }
-      let arrayLength  = results.data.length;
-      thisTraceDiv.children('.trace-ind-controls').remove()
-      let optionsHtml = `<option value="none">none</option>`;
-      for (let i = 0; i < header.length; i++){
-        optionsHtml+= `<option value="${header[i]}">${header[i]}</option>`;
-      }
-      let chartTypeHtml = ``;
-      for (let i = 0; i < chartTypes.length; i++){
-        chartTypeHtml+= `<option value="${chartTypes[i]}">${chartTypes[i]}</option>`;
-      }
-      //Add controls for x axis, y axis, color, style, row, column
-      let html = `
-        <div class="trace-ind-controls">
-          <label>Chart Type:</label>
-          <select data-config="type">${chartTypeHtml}</select>
-          <label>X axis:</label>
-          <select data-config="x">${optionsHtml}</select>
-          <label>Y axis:</label>
-          <select data-config="y">${optionsHtml}</select>
-          <label>Series:</label>
-          <select data-config="series">${optionsHtml}</select>
-      `;
-      thisTraceDiv.append(html);
+      rawData[selectFile] = results.data;
+      buildTraceControls(thisTraceDiv, selectFile);
     }
   });
 });
 
+function buildTraceControls(thisTraceDiv, selectFile){
+  let header = rawData[selectFile][0];
+  let colidx = {};
+  for (let i = 0; i < header.length; i++){
+    colidx[header[i]] = i;
+  }
+  thisTraceDiv.children('.trace-ind-controls').remove()
+  let optionsHtml = `<option value="none">none</option>`;
+  for (let i = 0; i < header.length; i++){
+    optionsHtml+= `<option value="${header[i]}">${header[i]}</option>`;
+  }
+  let chartTypeHtml = ``;
+  for (let i = 0; i < chartTypes.length; i++){
+    chartTypeHtml+= `<option value="${chartTypes[i]}">${chartTypes[i]}</option>`;
+  }
+  //Add controls for x axis, y axis, color, style, row, column
+  let html = `
+    <div class="trace-ind-controls">
+      <label>Chart Type:</label>
+      <select data-config="type">${chartTypeHtml}</select>
+      <label>X axis:</label>
+      <select data-config="x">${optionsHtml}</select>
+      <label>Y axis:</label>
+      <select data-config="y">${optionsHtml}</select>
+      <label>Series:</label>
+      <select data-config="series">${optionsHtml}</select>
+  `;
+  thisTraceDiv.append(html);
+}
+
 $('#report-controls').on('change','.trace-ind-controls select', function(){
   let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
   let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
-  let trace_idx = parseInt($(this).parents('.chart-controls').attr('data-traceID'));
-
-  // config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx] = ;
+  let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
+  config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx][$(this).attr('data-config')] = $(this).val();
 });
 
 function transpose(matrix_in) {
