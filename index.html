@@ -47,9 +47,9 @@ const files = {};
 let fileNames = []; //sorted alphabetically
 const config = {files:[], dashboards:[]};
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
-const aggData = []; //If we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column
+const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = [{x:[...], y:[...], series:'someSeries',...},...]
+//Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
 let plotlySchema = {};
-
 // Grab plotly schema synchronously. First set the global configs to synchronous, then json request, then flip back to async.
 $.ajaxSetup({async: false});
 $.getJSON('https://raw.githubusercontent.com/plotly/plotly.js/master/dist/plot-schema.json', function(data) {
@@ -57,17 +57,62 @@ $.getJSON('https://raw.githubusercontent.com/plotly/plotly.js/master/dist/plot-s
 });
 $.ajaxSetup({async: true});
 
-const chartTypes = ['dot','line','bar','map'];
-// const chartTypes = {
-//   dot:{
-//     attributes:{
-//       type:'scatter',
-//       mode:'markers',
-//     }
-//   },'line','linedot','bar','map'
-// };
+const wdgTypes = ['x','y','series'];
+const chartTypes = {
+  'none':{},
+  'dot':{
+    engine: 'plotly',
+    attr: {
+      type: 'scatter',
+      mode: 'markers',
+    },
+    required: ['y'],
+  },
+  'line':{
+    engine: 'plotly',
+    attr: {
+      type: 'scatter',
+      mode: 'lines',
+    },
+    required: ['y'],
+  },
+  'line dot':{
+    engine: 'plotly',
+    attr: {
+      type: 'scatter',
+      mode: 'lines+markers',
+    },
+    required: ['y'],
+  },
+  'bar':{
+    engine: 'plotly',
+    attr: {
+      type: 'bar',
+    },
+    required: ['y'],
+    layout:{
+      barmode: 'relative',
+    },
+  },
+  'lat/lng map':{
+    required:['lat','lng'],
+    engine:'google',
+  }
+};
 
-
+const defaultPlotlyLayout = {
+  font: {
+    family: 'Courier New, monospace',
+    size: 14,
+    color: '#7f7f7f'
+  },
+  margin: {
+    l: 0,
+    r: 0,
+    b: 0,
+    t: 40,
+  },
+};
 
 // let trace1 = {
 //   x: [1, 2, 3],
@@ -121,9 +166,9 @@ const chartTypes = ['dot','line','bar','map'];
 //   // grid: {rows: 1, columns: 2, pattern: 'independent'},
 // };
 // $('#outputs').append('<div id="myDiv" class="chart"></div>');
-// Plotly.newPlot('myDiv', data, layout, {editable: true});
+// Plotly.react('myDiv', data, layout, {editable: true});
 // $('#outputs').append('<div id="myDiv2" class="chart"></div>');
-// Plotly.newPlot('myDiv2', data2, layout, {editable: true});
+// Plotly.react('myDiv2', data2, layout, {editable: true});
 
 $('#file-input').change(function(evt){
   let newFiles = Array.from(evt.target.files);
@@ -147,6 +192,7 @@ $('#file-input').change(function(evt){
 $('#report-controls').on('click','.add-dashboard', function(){
   let dash_idx = config.dashboards.length;
   config.dashboards[dash_idx] = {charts:[]};
+  traceData[dash_idx] = [];
   $(this).before(`
     <div data-dashboardID="${dash_idx}" class="dashboard-controls">
       <div class="dashboard-title">Dashboard ${dash_idx}</div>
@@ -158,26 +204,28 @@ $('#report-controls').on('click','.add-chart', function(){
   let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
   let chart_idx = config.dashboards[dash_idx].charts.length;
   config.dashboards[dash_idx].charts[chart_idx] = {traces:[]};
+  traceData[dash_idx][chart_idx] = [];
   $(this).before(`
-    <div data-chartID="${chart_idx}" class="chart-controls">
+    <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-controls">
       <div class="chart-title">Chart ${chart_idx}</div>
-      <button class="add-trace">Add Trace</button>
+      <button class="add-trace">Add Data</button>
     </div>
   `);
 });
 
-  $('#report-controls').on('click','.add-trace', function(){
+$('#report-controls').on('click','.add-trace', function(){
   let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
   let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
   let trace_idx = config.dashboards[dash_idx].charts[chart_idx].traces.length;
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx] = {};
+  traceData[dash_idx][chart_idx][trace_idx] = {}; //when adding explode dimensions, this might be an array instead, structured like [[[row1,col1,series1],{}],[[row1,col1,series2],{}]...]
   let optionsHtml = `<option value="none">none</option>`;
   for(let fileName of fileNames){
     optionsHtml += `<option value="${fileName}">${fileName}</option>`;
   }
   let html = `
     <form class="trace-controls" data-traceID="${trace_idx}">
-      <div class="trace-title">Trace ${trace_idx}</div>
+      <div class="trace-title">Series ${trace_idx}</div>
       <label>Data source:</label>
       <select class="data-source">${optionsHtml}</select>
     </form>
@@ -210,18 +258,14 @@ $('#report-controls').on('change','.data-source', function(){
 
 function buildTraceControls(thisTraceDiv, selectFile){
   let header = rawData[selectFile][0];
-  let colidx = {};
-  for (let i = 0; i < header.length; i++){
-    colidx[header[i]] = i;
-  }
   thisTraceDiv.children('.trace-ind-controls').remove()
   let optionsHtml = `<option value="none">none</option>`;
   for (let i = 0; i < header.length; i++){
     optionsHtml+= `<option value="${header[i]}">${header[i]}</option>`;
   }
   let chartTypeHtml = ``;
-  for (let i = 0; i < chartTypes.length; i++){
-    chartTypeHtml+= `<option value="${chartTypes[i]}">${chartTypes[i]}</option>`;
+  for (const chartType in chartTypes){
+    chartTypeHtml+= `<option value="${chartType}">${chartType}</option>`;
   }
   //Add controls for x axis, y axis, color, style, row, column
   let html = `
@@ -242,8 +286,91 @@ $('#report-controls').on('change','.trace-ind-controls select', function(){
   let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
   let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
   let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
-  config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx][$(this).attr('data-config')] = $(this).val();
+  let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+  trace_config[$(this).attr('data-config')] = $(this).val();
+  if('type' in trace_config && trace_config.type != 'none' &&
+    chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
+    chartTypes[trace_config.type].required.every((val) => val != 'none')
+  ){
+    if($(this).attr('data-config') != 'type' || $.isEmptyObject(traceData[dash_idx][chart_idx][trace_idx])){
+      updateTraceData(dash_idx, chart_idx, trace_idx);
+    }
+    updateChart(dash_idx, chart_idx);
+  }
 });
+
+function updateTraceData(dash_idx, chart_idx, trace_idx){
+  traceData[dash_idx][chart_idx][trace_idx] = {};
+  const trace_data = traceData[dash_idx][chart_idx][trace_idx];
+  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+  const raw_data = rawData[trace_config.dataSource];
+  const header = raw_data[0];
+  const ci = {};
+  for(let i = 0; i < header.length; i++){
+    ci[header[i]] = i;
+  }
+  const traceWdg = [];
+  for(const wdg of wdgTypes){
+    if(wdg in trace_config && trace_config[wdg] != 'none'){
+      traceWdg.push(wdg);
+    }
+  }
+  if (traceWdg.includes('series')){
+    for(let i = 1; i < raw_data.length; i++){
+      let seriesVal = raw_data[i][ci[trace_config['series']]];
+      if(!(seriesVal in trace_data)){
+        trace_data[seriesVal] = {};
+        trace_data[seriesVal].name = seriesVal;
+        for(const wdg of traceWdg){
+          trace_data[seriesVal][wdg] = [];
+        }
+      }
+      for(const wdg of traceWdg){
+        trace_data[seriesVal][wdg].push(raw_data[i][ci[trace_config[wdg]]]);
+      }
+    }
+  } else{
+    let seriesVal = 'noSeries';
+    trace_data[seriesVal] = {};
+    for(const wdg of traceWdg){
+      trace_data[seriesVal][wdg] = [];
+    }
+    for(let i = 1; i < raw_data.length; i++){
+      for(const wdg of traceWdg){
+        trace_data[seriesVal][wdg].push(raw_data[i][ci[trace_config[wdg]]]);
+      }
+    }
+  }
+}
+function updateChart(dash_idx, chart_idx){
+  const chart_config = config.dashboards[dash_idx].charts[chart_idx].traces;
+  const chart_data = traceData[dash_idx][chart_idx];
+  if(chartTypes[chart_config[0].type].engine == 'plotly'){
+    if($(`#chart-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
+      $(`#dash-${dash_idx}-chart-${chart_idx}`).append(`<div id="chart-dash-${dash_idx}-chart-${chart_idx}" class="chart"></div>`);
+    }
+    let plotlyData = [];
+    let plotlyLayout = JSON.parse(JSON.stringify(defaultPlotlyLayout));
+    for(let i = 0; i < chart_data.length; i++){
+      let trace_config = chart_config[i];
+      let trace_data= chart_data[i];
+      let chartType = chartTypes[trace_config.type];
+      for(const ser in trace_data){
+        for(const prop in chartType['attr']){
+          trace_data[ser][prop] = chartType['attr'][prop];
+        }
+        plotlyData.push(trace_data[ser])
+        if('layout' in chartType){
+          for(const prop in chartType['layout']){
+            plotlyLayout[prop] = chartType['layout'][prop];
+          }
+        }
+      }
+    }
+    Plotly.react(`chart-dash-${dash_idx}-chart-${chart_idx}`, plotlyData, plotlyLayout, {editable: true});
+  }
+
+}
 
 function transpose(matrix_in) {
   const rows = matrix_in.length;
