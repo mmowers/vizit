@@ -60,7 +60,7 @@ $.getJSON('https://raw.githubusercontent.com/plotly/plotly.js/master/dist/plot-s
 });
 $.ajaxSetup({async: true});
 
-const wdgTypes = ['x','y','series'];
+
 const chartTypes = {
   'none':{},
   'dot':{
@@ -69,6 +69,7 @@ const chartTypes = {
       type: 'scatter',
       mode: 'markers',
     },
+    wdgTypes: ['x','y','series','size'],
     required: ['y'],
   },
   'line':{
@@ -77,6 +78,7 @@ const chartTypes = {
       type: 'scatter',
       mode: 'lines',
     },
+    wdgTypes: ['x','y','series'],
     required: ['y'],
   },
   'line dot':{
@@ -85,6 +87,7 @@ const chartTypes = {
       type: 'scatter',
       mode: 'lines+markers',
     },
+    wdgTypes: ['x','y','series','size'],
     required: ['y'],
   },
   'bar':{
@@ -92,26 +95,47 @@ const chartTypes = {
     attr: {
       type: 'bar',
     },
+    wdgTypes: ['x','y','series'],
     required: ['y'],
     layout:{
       barmode: 'relative',
     },
   },
+  '3D dot':{
+    engine: 'plotly',
+    attr: {
+      type: 'scatter3D',
+      mode: 'markers',
+    },
+    wdgTypes: ['x','y','z','series','size'],
+    required: ['x','y','z'],
+  },
   'lat/lng map':{
+    wdgTypes: ['lat','lng','size','series'],
     required:['lat','lng'],
     engine:'google',
   }
+};
+
+const wdgTypes = {
+  x: 'X axis',
+  y: 'Y axis',
+  z: 'Z axis',
+  series: 'Color',
+  size: 'Size',
+  lat: 'Latitude',
+  lng: 'Longitude',
 };
 
 const defaultPlotlyLayout = {
   autosize: false,
   width: 500,
   height: 400,
-  font: {
-    family: 'Courier New, monospace',
-    size: 14,
-    color: '#7f7f7f'
-  },
+  // font: {
+  //   family: 'Courier New, monospace',
+  //   size: 14,
+  //   color: '#7f7f7f'
+  // },
   margin: {
     l: 0,
     r: 0,
@@ -201,11 +225,17 @@ $('#report-controls').on('click','.add-trace', function(){
   for(let fileName of fileNames){
     optionsHtml += `<option value="${fileName}">${fileName}</option>`;
   }
+  let chartTypeHtml = ``;
+  for (const chartType in chartTypes){
+    chartTypeHtml+= `<option value="${chartType}">${chartType}</option>`;
+  }
   let html = `
     <form class="trace-controls" data-traceID="${trace_idx}">
       <div class="trace-title">Data ${trace_idx}</div>
       <label>Data source:</label>
       <select class="data-source">${optionsHtml}</select>
+      <label>Chart Type:</label>
+      <select data-config="type">${chartTypeHtml}</select>
     </form>
   `;
   $(this).before(html);
@@ -216,49 +246,53 @@ $('#report-controls').on('change','.data-source', function(){
   let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
   let selectFile = $(this).val();
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx].dataSource = selectFile;
-  let thisTraceDiv = $(this).parent();
+  //Do we need the following check?
   if(!fileNames.includes(selectFile)){
     return;
   }
-  if(selectFile in rawData){
-    buildTraceControls(thisTraceDiv, selectFile);
-    return;
-  }
   //If we haven't already gotten the file, grab the data.
-  Papa.parse(files[selectFile], {
-    header: false,
-    dynamicTyping: true,
-    skipEmptyLines: true,
-    complete: function(results, file) {
-      rawData[selectFile] = results.data;
-      buildTraceControls(thisTraceDiv, selectFile);
-    }
-  });
+  if(!(selectFile in rawData)){
+    Papa.parse(files[selectFile], {
+      header: false,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: function(results, file) {
+        rawData[selectFile] = results.data;
+      }
+    });
+  }
 });
 
-function buildTraceControls(thisTraceDiv, selectFile){
+$('#report-controls').on('change','select[data-config="type"]', function(){
+  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
+  let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
+  let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
+  config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx].type = $(this).val();
+  let chartType = $(this).val();
+  let thisTraceDiv = $(this).parent();
+  let selectFile = thisTraceDiv.children('.data-source').val();
+  if(selectFile != 'none' && chartType != 'none'){
+    buildTraceControls(thisTraceDiv, selectFile, chartType);
+  }
+});
+
+function buildTraceControls(thisTraceDiv, selectFile, chartType){
   let header = rawData[selectFile][0];
   thisTraceDiv.children('.trace-ind-controls').remove()
   let optionsHtml = `<option value="none">none</option>`;
   for (let i = 0; i < header.length; i++){
     optionsHtml+= `<option value="${header[i]}">${header[i]}</option>`;
   }
-  let chartTypeHtml = ``;
-  for (const chartType in chartTypes){
-    chartTypeHtml+= `<option value="${chartType}">${chartType}</option>`;
-  }
   //Add controls for x axis, y axis, color, style, row, column
-  let html = `
-    <div class="trace-ind-controls">
-      <label>Chart Type:</label>
-      <select data-config="type">${chartTypeHtml}</select>
-      <label>X axis:</label>
-      <select data-config="x">${optionsHtml}</select>
-      <label>Y axis:</label>
-      <select data-config="y">${optionsHtml}</select>
-      <label>Series:</label>
-      <select data-config="series">${optionsHtml}</select>
-  `;
+  let wdgHtml = ``;
+  for (const wdgType of chartTypes[chartType].wdgTypes){
+    wdgHtml += `
+      <label>${wdgTypes[wdgType]}</label>
+      <select data-config="${wdgType}">${optionsHtml}</select>
+    `;
+  }
+
+  let html = `<div class="trace-ind-controls">${wdgHtml}</div>`;
   thisTraceDiv.append(html);
 }
 
@@ -290,7 +324,7 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
     ci[header[i]] = i;
   }
   const traceWdg = [];
-  for(const wdg of wdgTypes){
+  for(const wdg of chartTypes[trace_config.type].wdgTypes){
     if(wdg in trace_config && trace_config[wdg] != 'none'){
       traceWdg.push(wdg);
     }
