@@ -225,17 +225,11 @@ $('#report-controls').on('click','.add-trace', function(){
   for(let fileName of fileNames){
     optionsHtml += `<option value="${fileName}">${fileName}</option>`;
   }
-  let chartTypeHtml = ``;
-  for (const chartType in chartTypes){
-    chartTypeHtml+= `<option value="${chartType}">${chartType}</option>`;
-  }
   let html = `
     <form class="trace-controls" data-traceID="${trace_idx}">
       <div class="trace-title">Data ${trace_idx}</div>
       <label>Data source:</label>
       <select class="data-source">${optionsHtml}</select>
-      <label>Chart Type:</label>
-      <select data-config="type">${chartTypeHtml}</select>
     </form>
   `;
   $(this).before(html);
@@ -245,11 +239,20 @@ $('#report-controls').on('change','.data-source', function(){
   let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
   let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
   let selectFile = $(this).val();
+  let thisDS = $(this);
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx].dataSource = selectFile;
-  //Do we need the following check?
+  //Do we need the following check? Is it for 'none'?
   if(!fileNames.includes(selectFile)){
     return;
   }
+  let chartTypeHtml = ``;
+  for (const chartType in chartTypes){
+    chartTypeHtml+= `<option value="${chartType}">${chartType}</option>`;
+  }
+  let html = `
+  <label>Chart Type:</label>
+  <select data-config="type">${chartTypeHtml}</select>
+  `;
   //If we haven't already gotten the file, grab the data.
   if(!(selectFile in rawData)){
     Papa.parse(files[selectFile], {
@@ -258,8 +261,11 @@ $('#report-controls').on('change','.data-source', function(){
       skipEmptyLines: true,
       complete: function(results, file) {
         rawData[selectFile] = results.data;
+        thisDS.after(html);
       }
     });
+  }else{
+    thisDS.after(html);
   }
 });
 
