@@ -260,7 +260,7 @@ $('#report-controls').on('change','.data-source', function(){
       dynamicTyping: true,
       skipEmptyLines: true,
       complete: function(results, file) {
-        rawData[selectFile] = results.data;
+        rawData[selectFile] = transpose_to_obj(results.data);
         thisDS.after(html);
       }
     });
@@ -283,7 +283,7 @@ $('#report-controls').on('change','select[data-config="type"]', function(){
 });
 
 function buildTraceControls(thisTraceDiv, selectFile, chartType){
-  let header = rawData[selectFile][0];
+  let header = Object.keys(rawData[selectFile]).sort();
   thisTraceDiv.children('.trace-ind-controls').remove()
   let optionsHtml = `<option value="none">none</option>`;
   for (let i = 0; i < header.length; i++){
@@ -324,11 +324,7 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
   const trace_data = traceData[dash_idx][chart_idx][trace_idx];
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   const raw_data = rawData[trace_config.dataSource];
-  const header = raw_data[0];
-  const ci = {};
-  for(let i = 0; i < header.length; i++){
-    ci[header[i]] = i;
-  }
+  const raw_data_len = raw_data[Object.keys(raw_data)[0]].length;
   const traceWdg = [];
   for(const wdg of chartTypes[trace_config.type].wdgTypes){
     if(wdg in trace_config && trace_config[wdg] != 'none'){
@@ -336,8 +332,8 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
     }
   }
   if (traceWdg.includes('series')){
-    for(let i = 1; i < raw_data.length; i++){
-      let seriesVal = raw_data[i][ci[trace_config['series']]];
+    for(let i = 0; i < raw_data_len; i++){
+      let seriesVal = raw_data[trace_config['series']][i];
       if(!(seriesVal in trace_data)){
         trace_data[seriesVal] = {};
         trace_data[seriesVal].name = seriesVal;
@@ -346,7 +342,7 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
         }
       }
       for(const wdg of traceWdg){
-        trace_data[seriesVal][wdg].push(raw_data[i][ci[trace_config[wdg]]]);
+        trace_data[seriesVal][wdg].push(raw_data[trace_config[wdg]][i]);
       }
     }
   } else{
@@ -355,9 +351,9 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
     for(const wdg of traceWdg){
       trace_data[seriesVal][wdg] = [];
     }
-    for(let i = 1; i < raw_data.length; i++){
+    for(let i = 0; i < raw_data_len; i++){
       for(const wdg of traceWdg){
-        trace_data[seriesVal][wdg].push(raw_data[i][ci[trace_config[wdg]]]);
+        trace_data[seriesVal][wdg].push(raw_data[trace_config[wdg]][i]);
       }
     }
   }
@@ -392,19 +388,20 @@ function updateChart(dash_idx, chart_idx){
 
 }
 
-function transpose(matrix_in) {
+function transpose_to_obj(matrix_in) {
   const rows = matrix_in.length;
   const cols = matrix_in[0].length;
-  const matrix_out = [];
-  for (let i = 0; i < cols; i++) {
-    matrix_out[i] = Array(rows);
+  const header = matrix_in[0];
+  const obj_out = [];
+  for (let j = 0; j < cols; j++) {
+    obj_out[header[j]] = Array(rows - 1);
   }
-  for (let i = 0; i < rows; i++) {
+  for (let i = 1; i < rows; i++) {
     for (let j = 0; j < cols; j++) {
-      matrix_out[j][i] = matrix_in[i][j];
+      obj_out[header[j]][i-1] = matrix_in[i][j];
     }
   }
-  return matrix_out;
+  return obj_out;
 }
 
 </script>
