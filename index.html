@@ -22,11 +22,11 @@ select{
   margin-bottom:20px;
 }
 
-/* .chart{
-  width: 400px;
-  height: 400px;
+.chart{
+  width: 800px;
+  height: 800px;
   float: left;
-} */
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
@@ -112,7 +112,7 @@ const chartTypes = {
   },
   'lat/lng map':{
     wdgTypes: ['lat','lng','size','series'],
-    required:['lat','lng'],
+    required:['lat','lng','size'],
     engine:'google',
   }
 };
@@ -129,8 +129,8 @@ const wdgTypes = {
 
 const defaultPlotlyLayout = {
   autosize: false,
-  width: 500,
-  height: 400,
+  // width: 500,
+  // height: 400,
   // font: {
   //   family: 'Courier New, monospace',
   //   size: 14,
@@ -361,10 +361,10 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
 function updateChart(dash_idx, chart_idx){
   const chart_config = config.dashboards[dash_idx].charts[chart_idx].traces;
   const chart_data = traceData[dash_idx][chart_idx];
+  if($(`#chart-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
+    $(`#dash-${dash_idx}-chart-${chart_idx}`).append(`<div id="chart-dash-${dash_idx}-chart-${chart_idx}" class="chart"></div>`);
+  }
   if(chartTypes[chart_config[0].type].engine == 'plotly'){
-    if($(`#chart-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
-      $(`#dash-${dash_idx}-chart-${chart_idx}`).append(`<div id="chart-dash-${dash_idx}-chart-${chart_idx}" class="chart"></div>`);
-    }
     let plotlyData = [];
     let plotlyLayout = JSON.parse(JSON.stringify(defaultPlotlyLayout));
     for(let i = 0; i < chart_data.length; i++){
@@ -375,7 +375,8 @@ function updateChart(dash_idx, chart_idx){
         for(const prop in chartType['attr']){
           trace_data[ser][prop] = chartType['attr'][prop];
         }
-        plotlyData.push(trace_data[ser])
+        //Todo: Size needs to be within marker{}
+        plotlyData.push(trace_data[ser]);
         if('layout' in chartType){
           for(const prop in chartType['layout']){
             plotlyLayout[prop] = chartType['layout'][prop];
@@ -384,8 +385,36 @@ function updateChart(dash_idx, chart_idx){
       }
     }
     Plotly.react(`chart-dash-${dash_idx}-chart-${chart_idx}`, plotlyData, plotlyLayout, defaultPlotlyConfig);
+  } else if(chartTypes[chart_config[0].type].engine == 'google'){
+    //I can't figure out how to load google maps script only when needed like:
+    //$('body').append('<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly"><\/script>');
+    //Also note that statement can't have the end script tag exactly because js thinks that thats the end of the script, so we add backslash.
+    let gMap = new google.maps.Map(document.getElementById(`chart-dash-${dash_idx}-chart-${chart_idx}`),
+    {
+      zoom: 3,
+      center: { lat: 37.09, lng: -95.712 },
+      mapTypeId: "terrain",
+    });
+    for(let i = 0; i < chart_data.length; i++){
+      let trace_config = chart_config[i];
+      let trace_data= chart_data[i];
+      let chartType = chartTypes[trace_config.type];
+      for(const ser in trace_data){
+        for (let j = 0; j < trace_data[ser]['lat'].length; j++) {
+          let mapCircle = new google.maps.Circle({
+            strokeWeight: 0,
+            fillColor: "#FF0000",
+            // fillOpacity: -1/2000*thisMetric + 1, //y=mx + b, where y is opacity, from 0 to 1.
+            map:gMap,
+            center: {lat: trace_data[ser]['lat'][j], lng: trace_data[ser]['lng'][j]},
+            radius: trace_data[ser]['size'][j],
+            // customText: 'Reduced Cost: ' + thisMetric + ' $/kW',
+          });
+          // google.maps.event.addListener(mapCircle, 'click', gmCircleListener);
+        }
+      }
+    }
   }
-
 }
 
 function transpose_to_obj(matrix_in) {
@@ -405,5 +434,6 @@ function transpose_to_obj(matrix_in) {
 }
 
 </script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly" async></script>
 </body>
 </html>
