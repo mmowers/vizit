@@ -16,16 +16,40 @@ select{
   text-decoration: underline;
 }
 
-.dashboard-controls,
-.chart-controls,
+.dashboard-outer,
+.chart-outer,
 .trace-controls{
   margin-bottom:20px;
 }
 
+.add-dashboard,
+.add-chart,
+.add-trace{
+  display: block;
+}
+
+.chart-outer{
+  display: inline-block;
+}
+
 .chart{
-  width: 800px;
-  height: 800px;
-  float: left;
+  width: 500px;
+  height: 400px;
+}
+
+.chart-controls{
+  border-style: solid;
+  border-width: 1px;
+}
+
+.chart + .chart-controls {
+    display: none;
+}
+.chart-outer:hover .chart + .chart-controls{
+    display:block;
+    position: absolute;
+    background-color: white;
+    z-index: 10;
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
@@ -34,15 +58,11 @@ select{
 <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
 </head>
 <body>
-<div id="controls">
-  <label for="file-input">Data sources:</label><br>
-  <input type="file" id="file-input" name="files[]" multiple />
-  <ul id="file-list">(no files selected)</ul>
-  <div id="report-controls">
-    <button class="add-dashboard">Add Dashboard</button>
-  </div>
-</div>
-<div id="outputs">
+<label for="file-input">Data sources:</label><br>
+<input type="file" id="file-input" name="files[]" multiple />
+<ul id="file-list">(no files selected)</ul>
+<div id="report">
+  <button class="add-dashboard">Add Dashboard</button>
 </div>
 <script>
 'use strict';
@@ -129,8 +149,8 @@ const wdgTypes = {
 
 const defaultPlotlyLayout = {
   autosize: false,
-  // width: 500,
-  // height: 400,
+  width: 500,
+  height: 400,
   // font: {
   //   family: 'Courier New, monospace',
   //   size: 14,
@@ -167,7 +187,7 @@ const defaultPlotlyLayout = {
 
 const defaultPlotlyConfig = {
   editable: false,
-  responsive: false,
+  // responsive: true,
   showLink: true,
   plotlyServerURL: "https://chart-studio.plotly.com"
 };
@@ -191,33 +211,35 @@ $('#file-input').change(function(evt){
   config.files = fileNames;
 });
 
-$('#report-controls').on('click','.add-dashboard', function(){
+$('#report').on('click','.add-dashboard', function(){
   let dash_idx = config.dashboards.length;
   config.dashboards[dash_idx] = {charts:[]};
   traceData[dash_idx] = [];
   $(this).before(`
-    <div data-dashboardID="${dash_idx}" class="dashboard-controls">
+    <div data-dashboardID="${dash_idx}" class="dashboard-outer">
       <div class="dashboard-title">Dashboard ${dash_idx}</div>
       <button class="add-chart">Add Chart</button>
     </div>
   `);
 });
-$('#report-controls').on('click','.add-chart', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
+$('#report').on('click','.add-chart', function(){
+  let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
   let chart_idx = config.dashboards[dash_idx].charts.length;
   config.dashboards[dash_idx].charts[chart_idx] = {traces:[]};
   traceData[dash_idx][chart_idx] = [];
   $(this).before(`
-    <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-controls">
-      <div class="chart-title">Chart ${chart_idx}</div>
-      <button class="add-trace">Add Data</button>
+    <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-outer">
+      <div class="chart-controls">
+        <div class="chart-title">Chart ${chart_idx}</div>
+        <button class="add-trace">Add Data</button>
+      </div>
     </div>
   `);
 });
 
-$('#report-controls').on('click','.add-trace', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
-  let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
+$('#report').on('click','.add-trace', function(){
+  let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
+  let chart_idx = parseInt($(this).parents('.chart-outer').attr('data-chartID'));
   let trace_idx = config.dashboards[dash_idx].charts[chart_idx].traces.length;
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx] = {};
   traceData[dash_idx][chart_idx][trace_idx] = {}; //when adding explode dimensions, this might be an array instead, structured like [[[row1,col1,series1],{}],[[row1,col1,series2],{}]...]
@@ -234,9 +256,9 @@ $('#report-controls').on('click','.add-trace', function(){
   `;
   $(this).before(html);
 });
-$('#report-controls').on('change','.data-source', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
-  let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
+$('#report').on('change','.data-source', function(){
+  let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
+  let chart_idx = parseInt($(this).parents('.chart-outer').attr('data-chartID'));
   let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
   let selectFile = $(this).val();
   let thisDS = $(this);
@@ -269,9 +291,9 @@ $('#report-controls').on('change','.data-source', function(){
   }
 });
 
-$('#report-controls').on('change','select[data-config="type"]', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
-  let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
+$('#report').on('change','select[data-config="type"]', function(){
+  let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
+  let chart_idx = parseInt($(this).parents('.chart-outer').attr('data-chartID'));
   let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx].type = $(this).val();
   let chartType = $(this).val();
@@ -302,9 +324,9 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
   thisTraceDiv.append(html);
 }
 
-$('#report-controls').on('change','.trace-ind-controls select', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-controls').attr('data-dashboardID'));
-  let chart_idx = parseInt($(this).parents('.chart-controls').attr('data-chartID'));
+$('#report').on('change','.trace-ind-controls select', function(){
+  let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
+  let chart_idx = parseInt($(this).parents('.chart-outer').attr('data-chartID'));
   let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
   let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   trace_config[$(this).attr('data-config')] = $(this).val();
@@ -362,7 +384,7 @@ function updateChart(dash_idx, chart_idx){
   const chart_config = config.dashboards[dash_idx].charts[chart_idx].traces;
   const chart_data = traceData[dash_idx][chart_idx];
   if($(`#chart-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
-    $(`#dash-${dash_idx}-chart-${chart_idx}`).append(`<div id="chart-dash-${dash_idx}-chart-${chart_idx}" class="chart"></div>`);
+    $(`#dash-${dash_idx}-chart-${chart_idx}`).prepend(`<div id="chart-dash-${dash_idx}-chart-${chart_idx}" class="chart"></div>`);
   }
   if(chartTypes[chart_config[0].type].engine == 'plotly'){
     let plotlyData = [];
@@ -385,8 +407,9 @@ function updateChart(dash_idx, chart_idx){
       }
     }
     Plotly.react(`chart-dash-${dash_idx}-chart-${chart_idx}`, plotlyData, plotlyLayout, defaultPlotlyConfig);
+    // window.dispatchEvent(new Event('resize')); //This works but maybe we should just be using plotly width and height...
   } else if(chartTypes[chart_config[0].type].engine == 'google'){
-    //I can't figure out how to load google maps script only when needed like:
+    //I can't figure out how to load google maps script only when needed, something like:
     //$('body').append('<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly"><\/script>');
     //Also note that statement can't have the end script tag exactly because js thinks that thats the end of the script, so we add backslash.
     let gMap = new google.maps.Map(document.getElementById(`chart-dash-${dash_idx}-chart-${chart_idx}`),
