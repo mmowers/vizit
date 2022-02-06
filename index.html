@@ -266,9 +266,7 @@ $('#report').on('click','.add-trace', function(){
   $(this).before(html);
 });
 $('#report').on('change','.data-source', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
-  let chart_idx = parseInt($(this).parents('.chart-outer').attr('data-chartID'));
-  let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
+  const [dash_idx, chart_idx, trace_idx] = get_this_idx(this);
   let selectFile = $(this).val();
   let thisDS = $(this);
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx].dataSource = selectFile;
@@ -301,9 +299,7 @@ $('#report').on('change','.data-source', function(){
 });
 
 $('#report').on('change','select[data-config="type"]', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
-  let chart_idx = parseInt($(this).parents('.chart-outer').attr('data-chartID'));
-  let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
+  const [dash_idx, chart_idx, trace_idx] = get_this_idx(this);
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx].type = $(this).val();
   let chartType = $(this).val();
   let thisTraceDiv = $(this).parent();
@@ -334,9 +330,7 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
 }
 
 $('#report').on('change','.trace-ind-controls select', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
-  let chart_idx = parseInt($(this).parents('.chart-outer').attr('data-chartID'));
-  let trace_idx = parseInt($(this).parents('.trace-controls').attr('data-traceID'));
+  const [dash_idx, chart_idx, trace_idx] = get_this_idx(this);
   let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   trace_config[$(this).attr('data-config')] = $(this).val();
   if('type' in trace_config && trace_config.type != 'none' &&
@@ -447,6 +441,13 @@ function updateChart(dash_idx, chart_idx){
       }
     }
   }
+}
+
+function get_this_idx(that){
+  let dash_idx = parseInt($(that).parents('.dashboard-outer').attr('data-dashboardID'));
+  let chart_idx = parseInt($(that).parents('.chart-outer').attr('data-chartID'));
+  let trace_idx = parseInt($(that).parents('.trace-controls').attr('data-traceID'));
+  return [dash_idx, chart_idx, trace_idx];
 }
 
 function transpose_to_obj(matrix_in) {
