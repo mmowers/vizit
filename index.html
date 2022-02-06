@@ -43,13 +43,22 @@ select{
 }
 
 .chart + .chart-controls {
-    display: none;
+  display: none;
 }
 .chart-outer:hover .chart + .chart-controls{
-    display:block;
-    position: absolute;
-    background-color: white;
-    z-index: 10;
+  display:block;
+  position: absolute;
+  background-color: white;
+  z-index: 10;
+  height: 300px;
+  overflow: scroll;
+}
+
+text.js-plot-link-container{
+  display:none;
+}
+.chart-outer:hover text.js-plot-link-container{
+  display:block;
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
