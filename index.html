@@ -52,6 +52,10 @@ select{
   z-index: 10;
 }
 
+.filter-div{
+  border: 1px solid black;
+}
+
 text.js-plot-link-container{
   display:none;
 }
@@ -255,11 +259,11 @@ $('#report').on('click','.add-trace', function(){
     optionsHtml += `<option value="${fileName}">${fileName}</option>`;
   }
   let html = `
-    <form class="trace-controls" data-traceID="${trace_idx}">
+    <div class="trace-controls" data-traceID="${trace_idx}">
       <div class="trace-title">Data ${trace_idx}</div>
       <label>Data source:</label>
       <select class="data-source">${optionsHtml}</select>
-    </form>
+    </div>
   `;
   $(this).before(html);
 });
@@ -310,9 +314,9 @@ $('#report').on('change','select[data-config="type"]', function(){
 function buildTraceControls(thisTraceDiv, selectFile, chartType){
   let header = Object.keys(rawData[selectFile]).sort();
   thisTraceDiv.children('.trace-ind-controls').remove()
-  let optionsHtml = `<option value="none">none</option>`;
-  for (let i = 0; i < header.length; i++){
-    optionsHtml+= `<option value="${header[i]}">${header[i]}</option>`;
+  let optionsHtml = `<option value="none">Add Filter</option>`;
+  for (const col of header){
+    optionsHtml+= `<option value="${col}">${col}</option>`;
   }
   //Add controls for x axis, y axis, color, style, row, column
   let wdgHtml = ``;
@@ -322,12 +326,19 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
       <select data-config="${wdgType}">${optionsHtml}</select>
     `;
   }
+  wdgHtml += `
+    <div class="filter-div">
+      <label>Filters</label>
+      <select class="add-filter">${optionsHtml}</select>
+    </div>
+    <button class="update-trace">Update</button>
+  `;
 
   let html = `<div class="trace-ind-controls">${wdgHtml}</div>`;
   thisTraceDiv.append(html);
 }
 
-$('#report').on('change','.trace-ind-controls select', function(){
+$('#report').on('change','.trace-ind-controls > select', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   trace_config[$(this).attr('data-config')] = $(this).val();
@@ -340,6 +351,72 @@ $('#report').on('change','.trace-ind-controls select', function(){
     }
     updateChart(dash_idx, chart_idx);
   }
+});
+
+$('#report').on('change','.add-filter', function(){
+  if($(this).val() == 'none'){
+    return;
+  }
+  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
+  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+  if(!('filter' in trace_config)){
+    trace_config.filter={};
+  }
+  trace_config.filter[$(this).val()] = {'include_exclude':'include', 'values':[]};
+  const uniques = [... new Set(rawData[trace_config.dataSource][$(this).val()])]; //maybe uniques should be evaluated and saved earlier...
+  let html = `
+    <div class="filter-outer">
+      <label class="filter-name">${$(this).val()}</label>
+        <select class="include-exclude">
+          <option value="include">Include Only</option>
+          <option value="exclude">Exclude Only</option>
+        </select>
+      <div>
+        <button class="select-all">All</button>
+        <button class="select-none">None</button>
+      </div>
+      <div class="filter-vals">
+  `;
+  for (let i = 0; i < uniques.length; i++){
+    html += `<label><input type="checkbox" name="filter-val" value="${i}">${uniques[i]}</label><br>`;
+  }
+  html += `</div></div>`;
+  $(this).before(html);
+  $(this).val('none');
+});
+
+$('#report').on('change','.include-exclude', function(){
+  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
+  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+  trace_config.filter[$(this).prev('.filter-name').text()]['include_exclude'] = $(this).val();
+});
+
+$('#report').on('change','.filter-vals input', function(){
+  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
+  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+  const filter_name = $(this).closest('.filter-outer').find('.filter-name').text();
+  const vals = trace_config.filter[filter_name]['values'];
+  if(this.checked){
+    vals.push($(this).parent().text());
+  } else {
+    vals.splice(vals.indexOf($(this).parent().text()), 1);
+  }
+});
+
+$('#report').on('click','.select-all, .select-none', function(){
+  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
+  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+  const all_bool = $(this).attr('class').includes('select-all');
+  $(this).parent().next().find('input').prop('checked',all_bool).change(); //WARNING: This could be quite time consuming
+});
+
+$('#report').on('click','.update-trace', function(){
+  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
+  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+  const raw_data = rawData[trace_config.dataSource];
+  // traceData[dash_idx][chart_idx][trace_idx]
+  updateTraceData(dash_idx, chart_idx, trace_idx);
+  updateChart(dash_idx, chart_idx);
 });
 
 function updateTraceData(dash_idx, chart_idx, trace_idx){
