@@ -82,7 +82,7 @@ const files = {};
 let fileNames = []; //sorted alphabetically
 const config = {files:[], dashboards:[]};
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
-const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = [{x:[...], y:[...], series:'someSeries',...},...]
+const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {data: {col1:[], col2:[],...}, traces: {'someSeries': {x:[...], y:[...],...},...}}.
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
 let plotlySchema = {};
 // Grab plotly schema synchronously. First set the global configs to synchronous, then json request, then flip back to async.
@@ -293,10 +293,12 @@ $('#report').on('change','.data-source', function(){
       skipEmptyLines: true,
       complete: function(results, file) {
         rawData[selectFile] = transpose_to_obj(results.data);
+        traceData[dash_idx][chart_idx][trace_idx].data = rawData[selectFile];
         thisDS.after(html);
       }
     });
   }else{
+    traceData[dash_idx][chart_idx][trace_idx].data = rawData[selectFile];
     thisDS.after(html);
   }
 });
@@ -315,24 +317,26 @@ $('#report').on('change','select[data-config="type"]', function(){
 function buildTraceControls(thisTraceDiv, selectFile, chartType){
   let header = Object.keys(rawData[selectFile]).sort();
   thisTraceDiv.children('.trace-ind-controls').remove()
-  let optionsHtml = `<option value="none">Add Filter</option>`;
+  let optionsHtml = '';
   for (const col of header){
     optionsHtml+= `<option value="${col}">${col}</option>`;
   }
   //Add controls for x axis, y axis, color, style, row, column
+  const wdgOptionsHtml = `<option value="none">none</option>` + optionsHtml;
   let wdgHtml = ``;
   for (const wdgType of chartTypes[chartType].wdgTypes){
     wdgHtml += `
       <label>${wdgTypes[wdgType]}</label>
-      <select data-config="${wdgType}">${optionsHtml}</select>
+      <select data-config="${wdgType}">${wdgOptionsHtml}</select>
     `;
   }
+  const filtOptionsHtml = `<option value="none">Add Filter</option>` + optionsHtml;
   wdgHtml += `
     <div class="filter-div">
       <label>Filters</label>
-      <select class="add-filter">${optionsHtml}</select>
+      <select class="add-filter">${filtOptionsHtml}</select>
+      <button class="update-filter">Update Filters</button>
     </div>
-    <button class="update-trace">Update</button>
   `;
 
   let html = `<div class="trace-ind-controls">${wdgHtml}</div>`;
@@ -411,20 +415,68 @@ $('#report').on('click','.select-all, .select-none', function(){
   $(this).parent().next().find('input').prop('checked',all_bool).change(); //WARNING: This could be quite time consuming
 });
 
-$('#report').on('click','.update-trace', function(){
+$('#report').on('click','.update-filter', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   const raw_data = rawData[trace_config.dataSource];
-  // traceData[dash_idx][chart_idx][trace_idx]
-  updateTraceData(dash_idx, chart_idx, trace_idx);
-  updateChart(dash_idx, chart_idx);
+  if('type' in trace_config && trace_config.type != 'none' &&
+    chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
+    chartTypes[trace_config.type].required.every((val) => val != 'none')
+  ){
+    const columns = [];
+    for(const wdg of chartTypes[trace_config.type].wdgTypes){
+      if(wdg in trace_config && trace_config[wdg] != 'none'){
+        columns.push(trace_config[wdg]);
+      }
+    }
+    traceData[dash_idx][chart_idx][trace_idx].data = applyFilters(raw_data, trace_config.filter);
+    updateTraceData(dash_idx, chart_idx, trace_idx);
+    updateChart(dash_idx, chart_idx);
+  }
 });
 
+function applyFilters(data_in, filters = {}){
+  //data_in looks like {col1:[], col2:[],...}
+  //filters looks like {col1: {include_exclude: 'include', values:[]},...}
+  if($.isEmptyObject(filters)){
+    return data_in;
+  }
+  //else (actual else not needed because of return statement)
+  const data_out = {};
+  const cols_out = Object.keys(data_in); // before I had a columns=[] argument and const cols_out = (columns.length === 0) ? Object.keys(data_in) : columns;
+  for(const col of cols_out){
+    data_out[col] = [];
+  }
+  const data_in_len = data_in[Object.keys(data_in)[0]].length;
+  const filter_entries = Object.entries(filters);
+  loop1:
+  for(let i = 0; i < data_in_len; i++){
+    //make sure this row passes all filters
+    loop2:
+    for(const [col_filt, filt] of filter_entries){
+      if(filt.include_exclude == 'include'){
+        if(!filt.values.includes(data_in[col_filt][i])){
+          continue loop1;
+        }
+      }else{ //meaning 'exclude'
+        if(filt.values.includes(data_in[col_filt][i])){
+          continue loop1;
+        }
+      }
+    }
+    //If we're here, it means this row passed all filters
+    for(const col of cols_out){
+      data_out[col].push(data_in[col][i]);
+    }
+  }
+  return data_out;
+}
+
 function updateTraceData(dash_idx, chart_idx, trace_idx){
-  traceData[dash_idx][chart_idx][trace_idx] = {};
-  const trace_data = traceData[dash_idx][chart_idx][trace_idx];
+  traceData[dash_idx][chart_idx][trace_idx].traces = {};
+  const trace_data = traceData[dash_idx][chart_idx][trace_idx].traces;
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  const raw_data = rawData[trace_config.dataSource];
+  const raw_data = traceData[dash_idx][chart_idx][trace_idx].data;
   const raw_data_len = raw_data[Object.keys(raw_data)[0]].length;
   const traceWdg = [];
   for(const wdg of chartTypes[trace_config.type].wdgTypes){
@@ -470,7 +522,7 @@ function updateChart(dash_idx, chart_idx){
     let plotlyLayout = JSON.parse(JSON.stringify(defaultPlotlyLayout));
     for(let i = 0; i < chart_data.length; i++){
       let trace_config = chart_config[i];
-      let trace_data= chart_data[i];
+      let trace_data= chart_data[i].traces;
       let chartType = chartTypes[trace_config.type];
       for(const ser in trace_data){
         for(const prop in chartType['attr']){
@@ -499,7 +551,7 @@ function updateChart(dash_idx, chart_idx){
     });
     for(let i = 0; i < chart_data.length; i++){
       let trace_config = chart_config[i];
-      let trace_data= chart_data[i];
+      let trace_data= chart_data[i].traces;
       let chartType = chartTypes[trace_config.type];
       for(const ser in trace_data){
         for (let j = 0; j < trace_data[ser]['lat'].length; j++) {
