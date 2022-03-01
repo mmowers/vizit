@@ -288,6 +288,7 @@ $('#report').on('change','.data-source', function(){
   //If we haven't already gotten the file, grab the data.
   if(!(selectFile in rawData)){
     Papa.parse(files[selectFile], {
+      worker: true, //WARNING: this might make things slower, but it prevents the page from hanging. Might want to turn off tho...
       header: false,
       dynamicTyping: true,
       skipEmptyLines: true,
@@ -364,18 +365,14 @@ $('#report').on('change','.add-filter', function(){
   }
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  if(!('filter' in trace_config)){
-    trace_config.filter={};
-  }
-  trace_config.filter[$(this).val()] = {'include_exclude':'include', 'values':[]};
   const uniques = [... new Set(rawData[trace_config.dataSource][$(this).val()])]; //maybe uniques should be evaluated and saved earlier...
   let html = `
     <div class="filter-outer">
       <label class="filter-name">${$(this).val()}</label>
-        <select class="include-exclude">
-          <option value="include">Include Only</option>
-          <option value="exclude">Exclude Only</option>
-        </select>
+      <select class="include-exclude">
+        <option value="include">Include Only</option>
+        <option value="exclude">Exclude Only</option>
+      </select>
       <div>
         <button class="select-all">All</button>
         <button class="select-none">None</button>
@@ -390,46 +387,35 @@ $('#report').on('change','.add-filter', function(){
   $(this).val('none');
 });
 
-$('#report').on('change','.include-exclude', function(){
-  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
-  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  trace_config.filter[$(this).prev('.filter-name').text()]['include_exclude'] = $(this).val();
-});
-
-$('#report').on('change','.filter-vals input', function(){
-  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
-  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  const filter_name = $(this).closest('.filter-outer').find('.filter-name').text();
-  const vals = trace_config.filter[filter_name]['values'];
-  if(this.checked){
-    vals.push($(this).parent().text());
-  } else {
-    vals.splice(vals.indexOf($(this).parent().text()), 1);
-  }
-});
-
 $('#report').on('click','.select-all, .select-none', function(){
-  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
-  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   const all_bool = $(this).attr('class').includes('select-all');
-  $(this).parent().next().find('input').prop('checked',all_bool).change(); //WARNING: This could be quite time consuming
+  $(this).parent().next().find('input').prop('checked',all_bool);
 });
 
 $('#report').on('click','.update-filter', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   const raw_data = rawData[trace_config.dataSource];
+  //Build filter config
+  trace_config.filter={};
+  $(this).siblings('.filter-outer').each(function(){
+    const vals = [];
+    $(this).children('.filter-vals').find('input:checked').each(function(){
+      let changedVal = $(this).parent().text();
+      if($.isNumeric(changedVal)){
+        changedVal = Number(changedVal);
+      }
+      vals.push(changedVal);
+    });
+    if (vals.length > 0){
+      trace_config.filter[$(this).children('.filter-name').text()] = {'include_exclude':$(this).children('.include-exclude').val(), 'values':vals};
+    }
+  });
+  traceData[dash_idx][chart_idx][trace_idx].data = applyFilters(raw_data, trace_config.filter);
   if('type' in trace_config && trace_config.type != 'none' &&
     chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
     chartTypes[trace_config.type].required.every((val) => val != 'none')
   ){
-    const columns = [];
-    for(const wdg of chartTypes[trace_config.type].wdgTypes){
-      if(wdg in trace_config && trace_config[wdg] != 'none'){
-        columns.push(trace_config[wdg]);
-      }
-    }
-    traceData[dash_idx][chart_idx][trace_idx].data = applyFilters(raw_data, trace_config.filter);
     updateTraceData(dash_idx, chart_idx, trace_idx);
     updateChart(dash_idx, chart_idx);
   }
