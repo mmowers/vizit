@@ -82,7 +82,7 @@ const files = {};
 let fileNames = []; //sorted alphabetically
 const config = {files:[], dashboards:[]};
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
-const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {data: {col1:[], col2:[],...}, traces: {'someSeries': {x:[...], y:[...],...},...}}.
+const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: {'someSeries': {x:[...], y:[...],...},...}}.
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
 let plotlySchema = {};
 // Grab plotly schema synchronously. First set the global configs to synchronous, then json request, then flip back to async.
@@ -103,6 +103,8 @@ const chartTypes = {
     },
     wdgTypes: ['x','y','series','size'],
     required: ['y'],
+    defaultAgg: 'sum',
+    aggCol: 'y',
   },
   'line':{
     engine: 'plotly',
@@ -112,6 +114,8 @@ const chartTypes = {
     },
     wdgTypes: ['x','y','series'],
     required: ['y'],
+    defaultAgg: 'sum',
+    aggCol: 'y',
   },
   'line dot':{
     engine: 'plotly',
@@ -121,6 +125,8 @@ const chartTypes = {
     },
     wdgTypes: ['x','y','series','size'],
     required: ['y'],
+    defaultAgg: 'sum',
+    aggCol: 'y',
   },
   'bar':{
     engine: 'plotly',
@@ -129,6 +135,8 @@ const chartTypes = {
     },
     wdgTypes: ['x','y','series'],
     required: ['y'],
+    defaultAgg: 'sum',
+    aggCol: 'y',
     layout:{
       barmode: 'relative',
     },
@@ -141,10 +149,14 @@ const chartTypes = {
     },
     wdgTypes: ['x','y','z','series','size'],
     required: ['x','y','z'],
+    defaultAgg: 'sum',
+    aggCol: 'z',
   },
   'lat/lng map':{
     wdgTypes: ['lat','lng','size','series'],
     required:['lat','lng','size'],
+    defaultAgg: 'none',
+    aggCol: 'size',
     engine:'google',
   }
 };
@@ -270,6 +282,7 @@ $('#report').on('click','.add-trace', function(){
 });
 $('#report').on('change','.data-source', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
+  const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
   let selectFile = $(this).val();
   let thisDS = $(this);
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx].dataSource = selectFile;
@@ -294,19 +307,23 @@ $('#report').on('change','.data-source', function(){
       skipEmptyLines: true,
       complete: function(results, file) {
         rawData[selectFile] = transpose_to_obj(results.data);
-        traceData[dash_idx][chart_idx][trace_idx].data = rawData[selectFile];
+        thisTraceData.filteredData = rawData[selectFile];
+        thisTraceData.aggData = rawData[selectFile];
         thisDS.after(html);
       }
     });
   }else{
-    traceData[dash_idx][chart_idx][trace_idx].data = rawData[selectFile];
+    thisTraceData.filteredData = rawData[selectFile];
+    thisTraceData.aggData = rawData[selectFile];
     thisDS.after(html);
   }
 });
 
 $('#report').on('change','select[data-config="type"]', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
-  config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx].type = $(this).val();
+  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+  trace_config.type = $(this).val();
+  trace_config.agg = chartTypes[$(this).val()].defaultAgg;
   let chartType = $(this).val();
   let thisTraceDiv = $(this).parent();
   let selectFile = thisTraceDiv.children('.data-source').val();
@@ -331,6 +348,14 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
       <select data-config="${wdgType}">${wdgOptionsHtml}</select>
     `;
   }
+  //Add aggregation
+  wdgHtml += `
+    <label>Aggregation</label>
+    <select class="agg" data-config="agg">
+      <option value="none">none</option>
+      <option value="sum">Sum</option>
+    </select>
+  `;
   const filtOptionsHtml = `<option value="none">Add Filter</option>` + optionsHtml;
   wdgHtml += `
     <div class="filter-div">
@@ -342,10 +367,12 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
 
   let html = `<div class="trace-ind-controls">${wdgHtml}</div>`;
   thisTraceDiv.append(html);
+  thisTraceDiv.find('.agg').val(chartTypes[chartType].defaultAgg);
 }
 
 $('#report').on('change','.trace-ind-controls > select', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
+  const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
   let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   trace_config[$(this).attr('data-config')] = $(this).val();
   if('type' in trace_config && trace_config.type != 'none' &&
@@ -353,6 +380,13 @@ $('#report').on('change','.trace-ind-controls > select', function(){
     chartTypes[trace_config.type].required.every((val) => val != 'none')
   ){
     if($(this).attr('data-config') != 'type' || $.isEmptyObject(traceData[dash_idx][chart_idx][trace_idx])){
+      if('agg' in trace_config && trace_config.agg != 'none'){
+        const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
+        const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
+          wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
+          wdg => trace_config[wdg]);
+        thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col);
+      }
       updateTraceData(dash_idx, chart_idx, trace_idx);
     }
     updateChart(dash_idx, chart_idx);
@@ -396,6 +430,7 @@ $('#report').on('click','.update-filter', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   const raw_data = rawData[trace_config.dataSource];
+  const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
   //Build filter config
   trace_config.filter={};
   $(this).siblings('.filter-outer').each(function(){
@@ -411,15 +446,62 @@ $('#report').on('click','.update-filter', function(){
       trace_config.filter[$(this).children('.filter-name').text()] = {'include_exclude':$(this).children('.include-exclude').val(), 'values':vals};
     }
   });
-  traceData[dash_idx][chart_idx][trace_idx].data = applyFilters(raw_data, trace_config.filter);
+  thisTraceData.filteredData = applyFilters(raw_data, trace_config.filter);
+  thisTraceData.aggData = thisTraceData.filteredData;
   if('type' in trace_config && trace_config.type != 'none' &&
     chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
     chartTypes[trace_config.type].required.every((val) => val != 'none')
   ){
+    if('agg' in trace_config && trace_config.agg != 'none'){
+      const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
+      const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
+        wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
+        wdg => trace_config[wdg]);
+      thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col);
+    }
     updateTraceData(dash_idx, chart_idx, trace_idx);
     updateChart(dash_idx, chart_idx);
   }
 });
+function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
+  //data_in looks like {col1:[], col2:[],...}
+  //agg_type is 'sum',...
+  //idx_cols is array of columns to be used as the index
+  //agg_col is the column to aggregate
+  //help_cols is array of columns needed for some aggregation.
+
+  //Do I split-apply-combine? Right now I'm just applying as i iterate through...
+  const data_in_len = data_in[Object.keys(data_in)[0]].length;
+  let data_in_idx = []; //array of arrays.
+  for(const idx_col of idx_cols){
+    data_in_idx.push(data_in[idx_col]);
+  }
+  data_in_idx = transpose(data_in_idx); //now each row is an index value. But does this transpose take too long?
+  const idx_out = [];
+  const vals = []; //perhaps this should look like {'sum(a)':[]} for agg_type='sum(a)' or {'ave(a)':[],'count':[]} for 'ave(a)' or {'sum(a*b)':[], 'sum(b)':[], 'sum(a*b)/sum(b)':[]} for 'sum(a*b)/sum(b)'? 
+  switch(agg_type){
+    case 'sum': //TODO: change to 'sum(a)'?
+      for(let i = 0; i < data_in_len; i++){
+        let idx_out_i = indexOfArr(idx_out, data_in_idx[i]);
+        if(idx_out_i == -1){
+          idx_out.push(data_in_idx[i]);
+          vals.push(data_in[agg_col][i]);
+        }else{
+          vals[idx_out_i] += data_in[agg_col][i]; //because we're simply summing
+        }
+      }
+      //some operations will require an additional step here to produce vals array...
+      break;
+  }
+  //now we have idx_out and vals arrays to combine into our output object.
+  const arr_out = transpose(idx_out); //another transpose, expensive?
+  const data_out = {};
+  data_out[agg_col] = vals;
+  for(let i = 0; i < arr_out.length; i++){
+    data_out[idx_cols[i]] = arr_out[i];
+  }
+  return data_out;
+}
 
 function applyFilters(data_in, filters = {}){
   //data_in looks like {col1:[], col2:[],...}
@@ -462,7 +544,7 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
   traceData[dash_idx][chart_idx][trace_idx].traces = {};
   const trace_data = traceData[dash_idx][chart_idx][trace_idx].traces;
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  const raw_data = traceData[dash_idx][chart_idx][trace_idx].data;
+  const raw_data = traceData[dash_idx][chart_idx][trace_idx].aggData;
   const raw_data_len = raw_data[Object.keys(raw_data)[0]].length;
   const traceWdg = [];
   for(const wdg of chartTypes[trace_config.type].wdgTypes){
@@ -564,7 +646,11 @@ function get_idx(that){
   return [dash_idx, chart_idx, trace_idx];
 }
 
+//TODO: should i really have this? Shouldn't i just use transpose below and then shift()?
+//Did i do this because shift needs to re-index and i thought it might be a performance hit?
 function transpose_to_obj(matrix_in) {
+  //matrix_in is array of arrays
+  //obj_out is object with keys as first row of matrix_in and values as transposed matrix_in arrays (minus first row of matrix_in)
   const rows = matrix_in.length;
   const cols = matrix_in[0].length;
   const header = matrix_in[0];
@@ -580,6 +666,40 @@ function transpose_to_obj(matrix_in) {
   return obj_out;
 }
 
+//I got the following from https://stackoverflow.com/a/46805290/11048803, "Vanilla Approach"
+function transpose(matrix_in) {
+  const rows = matrix_in.length;
+  const cols = matrix_in[0].length;
+  const matrix_out = [];
+  for (let j = 0; j < cols; j++) {
+    matrix_out[j] = Array(rows);
+  }
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      matrix_out[j][i] = matrix_in[i][j];
+    }
+  }
+  return matrix_out;
+}
+
+//I got the following mostly from https://betterprogramming.pub/check-if-an-array-is-within-a-2d-array-using-javascript-c534d96cb269
+function indexOfArr(arr, subarr){
+  for(var i = 0; i<arr.length; i++){
+    let checker = false
+    for(var j = 0; j<arr[i].length; j++){
+      if(arr[i][j] === subarr[j]){
+        checker = true
+      } else {
+        checker = false
+        break;
+      }
+    }
+    if (checker){
+      return i;
+    }
+  }
+  return -1;
+}
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly" async></script>
 </body>
