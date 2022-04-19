@@ -65,13 +65,13 @@ text.js-plot-link-container{
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
-<script src='https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.8.0/plotly.min.js'></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.8.0/plotly.min.js"></script>
 <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
 </head>
 <body>
 <a style="position: absolute; top: 10px; right: 20px; z-index:100;" href="http://github.com/mmowers/vizit">Vizit GitHub</a>
 <label for="file-input">Data sources:</label><br>
-<input type="file" id="file-input" name="files[]" multiple />
+<input type="file" id="file-input" name="files[]" multiple="multiple">
 <ul id="file-list">(no files selected)</ul>
 <div id="report">
   <button class="add-dashboard">Add Dashboard</button>
@@ -702,5 +702,15 @@ function indexOfArr(arr, subarr){
 }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly" async></script>
+<a onclick="this.href='data:text/html;charset=UTF-8,'+encodeURIComponent(orig_html_str)" href="#" download="vizit.html">Download</a>
+<script>
+  //hmm i think i remember some more google tags ending up in the html on load,
+  //I worry that those might randomly appear in orig_html via a race condition...
+  let orig_html_str = $('html').prop('outerHTML');
+  plotly_style = $('html').find('[id="plotly.js-style-global"]').prop('outerHTML'); //we need to remove this one thing.
+  orig_html_str = orig_html_str.replace(plotly_style, ''); //or see https://stackoverflow.com/questions/1405128/remove-dom-elements-from-jquery-object
+  orig_html_str = '<!DOCTYPE html>\n' + orig_html_str;
+  //var orig_html = new XMLSerializer().serializeToString(document); //See https://stackoverflow.com/questions/817218/how-to-get-the-entire-document-html-as-a-string
+</script>
 </body>
 </html>
