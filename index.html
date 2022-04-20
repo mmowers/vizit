@@ -78,9 +78,8 @@ text.js-plot-link-container{
 </div>
 <script>
 'use strict';
-const files = {};
-let fileNames = []; //sorted alphabetically
-const config = {files:[], dashboards:[]};
+const files = {}; //list of html File objects
+const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: {'someSeries': {x:[...], y:[...],...},...}}.
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
@@ -228,11 +227,10 @@ $('#file-input').change(function(evt){
   }
   //Show files in html, sorted alphabetically
   $('#file-list').empty();
-  fileNames = Object.keys(files).sort();
-  for(let fileName of fileNames){
+  config.fileNames = Object.keys(files).sort();
+  for(let fileName of config.fileNames){
     $('#file-list').append(`<li>${fileName}</li>`);
   }
-  config.files = fileNames;
 });
 
 $('#report').on('click','.add-dashboard', function(){
@@ -268,7 +266,7 @@ $('#report').on('click','.add-trace', function(){
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx] = {};
   traceData[dash_idx][chart_idx][trace_idx] = {}; //when adding explode dimensions, this might be an array instead, structured like [[[row1,col1,series1],{}],[[row1,col1,series2],{}]...]
   let optionsHtml = `<option value="none">none</option>`;
-  for(let fileName of fileNames){
+  for(let fileName of config.fileNames){
     optionsHtml += `<option value="${fileName}">${fileName}</option>`;
   }
   let html = `
@@ -287,7 +285,7 @@ $('#report').on('change','.data-source', function(){
   let thisDS = $(this);
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx].dataSource = selectFile;
   //Do we need the following check? Is it for 'none'?
-  if(!fileNames.includes(selectFile)){
+  if(!config.fileNames.includes(selectFile)){
     return;
   }
   let chartTypeHtml = ``;
@@ -704,13 +702,16 @@ function indexOfArr(arr, subarr){
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly" async></script>
 <a onclick="this.href='data:text/html;charset=UTF-8,'+encodeURIComponent(orig_html_str)" href="#" download="vizit.html">Download</a>
 <script>
-  //hmm i think i remember some more google tags ending up in the html on load,
-  //I worry that those might randomly appear in orig_html via a race condition...
-  let orig_html_str = $('html').prop('outerHTML');
-  plotly_style = $('html').find('[id="plotly.js-style-global"]').prop('outerHTML'); //we need to remove this one thing.
-  orig_html_str = orig_html_str.replace(plotly_style, ''); //or see https://stackoverflow.com/questions/1405128/remove-dom-elements-from-jquery-object
-  orig_html_str = '<!DOCTYPE html>\n' + orig_html_str;
-  //var orig_html = new XMLSerializer().serializeToString(document); //See https://stackoverflow.com/questions/817218/how-to-get-the-entire-document-html-as-a-string
+//hmm i think i remember some more google tags ending up in the html on load,
+//I worry that those might randomly appear in orig_html via a race condition...
+let orig_html_str = $('html').prop('outerHTML');
+//we need to remove this one plotly style tag that plotly adds, otherwise it will build up on susequent file download.
+//After that, the only meaningful difference with the original file is the google key,
+//which has &amp; instead of &. See https://stackoverflow.com/questions/5920720/innerhtml-gives-me-as-amp
+plotly_style = $('html').find('[id="plotly.js-style-global"]').prop('outerHTML');
+orig_html_str = orig_html_str.replace(plotly_style, ''); //or see https://stackoverflow.com/questions/1405128/remove-dom-elements-from-jquery-object
+orig_html_str = '<!DOCTYPE html>\n' + orig_html_str;
+//var orig_html = new XMLSerializer().serializeToString(document); //See https://stackoverflow.com/questions/817218/how-to-get-the-entire-document-html-as-a-string
 </script>
 </body>
 </html>
