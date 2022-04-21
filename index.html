@@ -80,10 +80,11 @@ text.js-plot-link-container{
 <div id="report">
   <button class="add-dashboard">Add Dashboard</button>
 </div>
-<p id="download-html">Download HTML</p>
+<span id="download-html">Download HTML</span>
 <script>
 'use strict';
 const files = {}; //list of html File objects
+//config_load goes here if present
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: {'someSeries': {x:[...], y:[...],...},...}}.
@@ -657,7 +658,7 @@ function transpose_to_obj(matrix_in) {
   const rows = matrix_in.length;
   const cols = matrix_in[0].length;
   const header = matrix_in[0];
-  const obj_out = [];
+  const obj_out = {};
   for (let j = 0; j < cols; j++) {
     obj_out[header[j]] = Array(rows - 1);
   }
@@ -704,7 +705,11 @@ function indexOfArr(arr, subarr){
   return -1;
 }
 $('#download-html').click(function(){
-  let content = "data:text/csv;charset=utf-8," + encodeURIComponent(orig_html_str);
+  var stringifiedConfig = JSON.stringify(config);
+  var stringifiedRawData = JSON.stringify(rawData);
+  let html_str = orig_html_str.replace(`//config_load goes here if present`,`config_load = ${stringifiedConfig};`)
+  html_str = html_str.replace(`const rawData = {};`,`const rawData = ${stringifiedRawData};`)
+  let content = "data:text/csv;charset=utf-8," + encodeURIComponent(html_str);
   const link = document.createElement("a");
   link.setAttribute("href", content);
   link.setAttribute("download", "vizit.html");
@@ -712,11 +717,21 @@ $('#download-html').click(function(){
   link.click();
   document.body.removeChild(link);
 });
+//Load configuration if it exists
+$(document).ready(function(){
+  if (typeof config_load !== 'undefined') {
+    //Configure all the charts like a user would
+    for(const db of config_load.dashboards){
+      //do things
+    }
+  }
+});
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly" async></script>
 <script>
-//hmm i think i remember some more google tags ending up in the html on load,
-//I worry that those might randomly appear in orig_html via a race condition...
+//The following saves the original html so that we can save into html. It needs to be at the very end so we get everything.
+//Maybe we should wait until onload? i think i remember some more google tags ending up in the html on load, though.
+//Regardless, those might randomly appear in orig_html via race condition...
 let orig_html_str = $('html').prop('outerHTML');
 //we need to remove this one plotly style tag that plotly adds, otherwise it will build up on susequent file download.
 //After that, the only meaningful difference with the original file is the google key,
