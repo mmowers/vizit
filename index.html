@@ -730,9 +730,22 @@ $(document).ready(function(){
       $(`[data-dashboardID="${di}"] .add-chart`).click();
       cht.traces.forEach((trc, ti) => {
         $(`#dash-${di}-chart-${ci} .add-trace`).click();
+        //dataSource first
         if('dataSource' in trc){
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .data-source`).val(trc['dataSource']).change();
         }
+        //Now type
+        if('type' in trc){
+          $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="type"]`).val(trc['type']).change();
+        }
+        //Now everything else, except filters
+        for (const key in trc){
+          if(['filter','dataSource','type'].includes(key)){
+            continue;
+          }
+          $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="${key}"`).val(trc[key]).change();
+        }
+        //Finally, filters
       });
     });
   });
