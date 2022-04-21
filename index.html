@@ -746,6 +746,18 @@ $(document).ready(function(){
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="${key}"`).val(trc[key]).change();
         }
         //Finally, filters
+        if('filter' in trc){
+          for (const key in trc['filter']){
+            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .add-filter`).val(key).change();
+            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .include-exclude`).last().val(trc['filter'][key]['include_exclude']).change();
+            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-vals`).last().children('label').each(function(){
+              if(trc['filter'][key]['values'].map(String).includes($(this).text())){ //perhaps map to string in separate step for speed
+                $(this).children('input').prop( "checked", true );
+              }
+            });
+            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-filter`).click();
+          }
+        }
       });
     });
   });
