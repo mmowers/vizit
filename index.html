@@ -707,7 +707,7 @@ function indexOfArr(arr, subarr){
 $('#download-html').click(function(){
   var stringifiedConfig = JSON.stringify(config);
   var stringifiedRawData = JSON.stringify(rawData);
-  let html_str = orig_html_str.replace(`//config_load goes here if present`,`config_load = ${stringifiedConfig};`)
+  let html_str = orig_html_str.replace(`//config_load goes here if present`,`const config_load = ${stringifiedConfig};`)
   html_str = html_str.replace(`const rawData = {};`,`const rawData = ${stringifiedRawData};`)
   let content = "data:text/csv;charset=utf-8," + encodeURIComponent(html_str);
   const link = document.createElement("a");
@@ -719,12 +719,23 @@ $('#download-html').click(function(){
 });
 //Load configuration if it exists
 $(document).ready(function(){
-  if (typeof config_load !== 'undefined') {
-    //Configure all the charts like a user would
-    for(const db of config_load.dashboards){
-      //do things
-    }
+  if (typeof config_load === 'undefined') {
+    return;
   }
+  config.fileNames = config_load.fileNames;
+  //Configure all the charts like a user would
+  config_load.dashboards.forEach((db, di) => {
+    $('.add-dashboard').click();
+    db.charts.forEach((cht, ci) => {
+      $(`[data-dashboardID="${di}"] .add-chart`).click();
+      cht.traces.forEach((trc, ti) => {
+        $(`#dash-${di}-chart-${ci} .add-trace`).click();
+        if('dataSource' in trc){
+          $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .data-source`).val(trc['dataSource']).change();
+        }
+      });
+    });
+  });
 });
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly" async></script>
