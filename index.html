@@ -62,7 +62,8 @@ text.js-plot-link-container{
 .chart-outer:hover text.js-plot-link-container{
   display:block;
 }
-#download-html{
+#download-html,
+#download-json{
   color: #0088cc;
   cursor: pointer;
 }
@@ -80,7 +81,8 @@ text.js-plot-link-container{
 <div id="report">
   <button class="add-dashboard">Add Dashboard</button>
 </div>
-<span id="download-html">Download HTML</span>
+<div><span id="download-html">Download HTML</span></div>
+<div><span id="download-json">Download config JSON</span></div>
 <script>
 'use strict';
 const files = {}; //list of html File objects
@@ -709,7 +711,7 @@ $('#download-html').click(function(){
   var stringifiedRawData = JSON.stringify(rawData);
   let html_str = orig_html_str.replace(/const config_load = .*;/,`const config_load = ${stringifiedConfig};`)
   html_str = html_str.replace(/const rawData = .*;/,`const rawData = ${stringifiedRawData};`)
-  let content = "data:text/csv;charset=utf-8," + encodeURIComponent(html_str);
+  let content = "data:text/html;charset=utf-8," + encodeURIComponent(html_str);
   const link = document.createElement("a");
   link.setAttribute("href", content);
   link.setAttribute("download", "vizit.html");
@@ -717,9 +719,18 @@ $('#download-html').click(function(){
   link.click();
   document.body.removeChild(link);
 });
+$('#download-json').click(function(){
+  let content = "data:text/json;charset=utf-8," + JSON.stringify(config, null, 2);
+  const link = document.createElement("a");
+  link.setAttribute("href", content);
+  link.setAttribute("download", "config.json");
+  document.body.appendChild(link); // Required for FF
+  link.click();
+  document.body.removeChild(link);
+});
 //Load configuration if it exists
 $(document).ready(function(){
-  if (typeof config_load === null) {
+  if (config_load === null) {
     return;
   }
   config.fileNames = config_load.fileNames;
