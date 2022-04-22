@@ -84,7 +84,7 @@ text.js-plot-link-container{
 <script>
 'use strict';
 const files = {}; //list of html File objects
-//config_load goes here if present
+const config_load = null; //this gets replaced if we have saved config
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: {'someSeries': {x:[...], y:[...],...},...}}.
@@ -707,8 +707,8 @@ function indexOfArr(arr, subarr){
 $('#download-html').click(function(){
   var stringifiedConfig = JSON.stringify(config);
   var stringifiedRawData = JSON.stringify(rawData);
-  let html_str = orig_html_str.replace(`//config_load goes here if present`,`const config_load = ${stringifiedConfig};`)
-  html_str = html_str.replace(`const rawData = {};`,`const rawData = ${stringifiedRawData};`)
+  let html_str = orig_html_str.replace(/const config_load = .*;/,`const config_load = ${stringifiedConfig};`)
+  html_str = html_str.replace(/const rawData = .*;/,`const rawData = ${stringifiedRawData};`)
   let content = "data:text/csv;charset=utf-8," + encodeURIComponent(html_str);
   const link = document.createElement("a");
   link.setAttribute("href", content);
@@ -719,7 +719,7 @@ $('#download-html').click(function(){
 });
 //Load configuration if it exists
 $(document).ready(function(){
-  if (typeof config_load === 'undefined') {
+  if (typeof config_load === null) {
     return;
   }
   config.fileNames = config_load.fileNames;
