@@ -75,8 +75,8 @@ text.js-plot-link-container{
 </head>
 <body>
 <a style="position: absolute; top: 10px; right: 20px; z-index:100;" href="http://github.com/mmowers/vizit">Vizit GitHub</a>
-<label for="file-input">Data sources:</label><br>
-<input type="file" id="file-input" name="files[]" multiple="multiple">
+<label for="file-input">Data sources / config:</label><br>
+<input type="file" id="file-input" name="file-input" multiple="multiple">
 <ul id="file-list">(no files selected)</ul>
 <div id="report">
   <button class="add-dashboard">Add Dashboard</button>
@@ -86,18 +86,19 @@ text.js-plot-link-container{
 <script>
 'use strict';
 const files = {}; //list of html File objects
-const config_load = null; //this gets replaced if we have saved config
+let config_load = null; //this gets replaced if we have saved config
+let config_load_json_file = null;
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: {'someSeries': {x:[...], y:[...],...},...}}.
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
 let plotlySchema = {};
-// Grab plotly schema synchronously. First set the global configs to synchronous, then json request, then flip back to async.
-$.ajaxSetup({async: false});
-$.getJSON('https://raw.githubusercontent.com/plotly/plotly.js/master/dist/plot-schema.json', function(data) {
-  plotlySchema = data;
-});
-$.ajaxSetup({async: true});
+// Uncomment the following section to grab plotly schema (synchronously). First set the global configs to synchronous, then json request, then flip back to async.
+// $.ajaxSetup({async: false});
+// $.getJSON('https://raw.githubusercontent.com/plotly/plotly.js/master/dist/plot-schema.json', function(data) {
+//   plotlySchema = data;
+// });
+// $.ajaxSetup({async: true});
 
 
 const chartTypes = {
@@ -230,14 +231,48 @@ $('#file-input').change(function(evt){
     if(newFiles[i].name in files){
       delete files[newFiles[i].name];
     }
-    //Regardless, add the new file to the files object
-    files[newFiles[i].name] = newFiles[i];
+    //If this is a json file, we will save it in config_load_json_file.
+    if(newFiles[i].name.endsWith('.json')){
+      config_load_json_file = newFiles[i];
+    } else{
+    //Else add the new file to the files object
+      files[newFiles[i].name] = newFiles[i];
+    }
   }
   //Show files in html, sorted alphabetically
   $('#file-list').empty();
   config.fileNames = Object.keys(files).sort();
   for(let fileName of config.fileNames){
     $('#file-list').append(`<li>${fileName}</li>`);
+  }
+  //If we have config from a json file, check to make sure all the needed files are in the files object and,
+  //if so, call load_config. Otherwise, list the files that are still needed
+  if(config_load_json_file != null){
+    //maybe a little overkill to read in every time, but the config file can get updated so good for that.
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      config_load = JSON.parse(evt.target.result);
+      const numFiles = config_load.fileNames.length;
+      let countFile = 0;
+      for(const fileName of config_load.fileNames){
+        if(!(fileName in rawData)){
+          Papa.parse(files[fileName], {
+            worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
+            header: false,
+            dynamicTyping: true,
+            skipEmptyLines: true,
+            complete: function(results, file) {
+              rawData[fileName] = transpose_to_obj(results.data);
+              countFile++;
+              if(countFile >= numFiles){
+                load_config();
+              }
+            }
+          });
+        }
+      }
+    };
+    reader.readAsText(config_load_json_file);
   }
 });
 
@@ -307,7 +342,7 @@ $('#report').on('change','.data-source', function(){
   //If we haven't already gotten the file, grab the data.
   if(!(selectFile in rawData)){
     Papa.parse(files[selectFile], {
-      worker: true, //WARNING: this might make things slower, but it prevents the page from hanging. Might want to turn off tho...
+      worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
       header: false,
       dynamicTyping: true,
       skipEmptyLines: true,
@@ -728,13 +763,14 @@ $('#download-json').click(function(){
   link.click();
   document.body.removeChild(link);
 });
-//Load configuration if it exists
-$(document).ready(function(){
+
+//Function to import specified configurations.
+function load_config(){
   if (config_load === null) {
     return;
   }
   config.fileNames = config_load.fileNames;
-  //Configure all the charts like a user would
+  //Configure all the charts like a user would.
   config_load.dashboards.forEach((db, di) => {
     $('.add-dashboard').click();
     db.charts.forEach((cht, ci) => {
@@ -772,7 +808,10 @@ $(document).ready(function(){
       });
     });
   });
-});
+}
+//Load configuration if it exists
+$(document).ready(load_config);
+
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly" async></script>
 <script>
