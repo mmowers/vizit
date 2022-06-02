@@ -744,7 +744,7 @@ function indexOfArr(arr, subarr){
 $('#download-html').click(function(){
   var stringifiedConfig = JSON.stringify(config);
   var stringifiedRawData = JSON.stringify(rawData);
-  let html_str = orig_html_str.replace(/const config_load = .*;/,`const config_load = ${stringifiedConfig};`)
+  let html_str = orig_html_str.replace(/let config_load = .*;/,`let config_load = ${stringifiedConfig};`)
   html_str = html_str.replace(/const rawData = .*;/,`const rawData = ${stringifiedRawData};`)
   let content = "data:text/html;charset=utf-8," + encodeURIComponent(html_str);
   const link = document.createElement("a");
