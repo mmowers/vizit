@@ -92,8 +92,8 @@ const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetica
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: {'someSeries': {x:[...], y:[...],...},...}}.
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
-let plotlySchema = {};
-// Uncomment the following section to grab plotly schema (synchronously). First set the global configs to synchronous, then json request, then flip back to async.
+// Uncomment the following section to grab plotly schema (synchronously). First set the global configs to synchronous, then json request, then flip back to async. I think https://plotly.com/javascript/reference/ has the same info
+// let plotlySchema = {};
 // $.ajaxSetup({async: false});
 // $.getJSON('https://raw.githubusercontent.com/plotly/plotly.js/master/dist/plot-schema.json', function(data) {
 //   plotlySchema = data;
