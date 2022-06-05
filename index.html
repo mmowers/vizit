@@ -92,7 +92,13 @@ const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetica
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: {'someSeries': {x:[...], y:[...],...},...}}.
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
-// Uncomment the following section to grab plotly schema (synchronously). First set the global configs to synchronous, then json request, then flip back to async. I think https://plotly.com/javascript/reference/ has the same info
+let plotlySchema = Plotly.PlotSchema.get() //I found this on a forum: https://community.plotly.com/t/plotly-json-schema-reference/21261
+// Plotly reference links:
+// Single page figure reference: https://plotly.com/javascript/reference/ (this has the schema info as well)
+// Function reference: https://plotly.com/javascript/plotlyjs-function-reference (including image download, another resource is: https://plotly.com/javascript/static-image-export/)
+// Configuration options: https://plotly.com/javascript/configuration-options/
+
+// This was the old way to get the schema (I found it at https://plotly.com/javascript/reference/index/): Uncomment the following section to grab plotly schema (synchronously). First set the global configs to synchronous, then json request, then flip back to async.
 // let plotlySchema = {};
 // $.ajaxSetup({async: false});
 // $.getJSON('https://raw.githubusercontent.com/plotly/plotly.js/master/dist/plot-schema.json', function(data) {
@@ -179,7 +185,7 @@ const wdgTypes = {
   lng: 'Longitude',
 };
 
-const defaultPlotlyLayout = {
+const defaultPlotlyLayout = { //See https://plotly.com/javascript/reference/layout/
   autosize: false,
   width: 500,
   height: 400,
@@ -214,14 +220,18 @@ const defaultPlotlyLayout = {
       text: '',
     },
     automargin: true,
-  }
+  },
 };
 
-const defaultPlotlyConfig = {
+const defaultPlotlyConfig = { //See https://plotly.com/javascript/configuration-options
   editable: false,
   // responsive: true,
   showLink: true,
-  plotlyServerURL: "https://chart-studio.plotly.com"
+  plotlyServerURL: "https://chart-studio.plotly.com",
+  toImageButtonOptions: { //See https://plotly.com/javascript/configuration-options/#customize-download-plot-options
+    format: 'svg', // one of png, svg, jpeg, webp
+    scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
+  },
 };
 
 $('#file-input').change(function(evt){
