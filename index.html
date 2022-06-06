@@ -106,7 +106,6 @@ let plotlySchema = Plotly.PlotSchema.get() //I found this on a forum: https://co
 // });
 // $.ajaxSetup({async: true});
 
-
 const chartTypes = {
   'none':{},
   'dot':{
@@ -233,6 +232,109 @@ const defaultPlotlyConfig = { //See https://plotly.com/javascript/configuration-
     scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
   },
 };
+
+//Maybe note which properties are in layout and which will be in the trace itself. Maybe just use schema?
+//But perhaps assume that all trace properties are common across trace types, although some, e.g. 
+const customStyle = {
+  'Plot Width (px)': {
+    where: 'layout',
+    path: ['width'],
+  },
+  'Plot Height (px)': {
+    where: 'layout',
+    path: ['height'],
+  },
+  'Plot Title': {
+    where: 'layout',
+    path: ['title','text'],
+  },
+  'Plot Title Font Size': {
+    where: 'layout',
+    path: ['title','font','size'],
+  },
+  'X-axis Title': {
+    where: 'layout',
+    path: ['xaxis','title','text'],
+  },
+  'X-axis Label Angle (deg)': {
+    where: 'layout',
+    path: ['xaxis','tickangle'],
+  },
+  'Y-axis Title': {
+    where: 'layout',
+    path: ['yaxis','title','text'],
+  },
+  'Bar Width': {
+    where: 'data',
+    path: ['width'], //this only gets used for bar charts
+  },
+  'Line Width (pt)': {
+    where: 'data',
+    path: ['line','width'],
+  },
+  'Dot Size (pt)': {
+    where: 'data',
+    path: ['marker','size'],
+  },
+  'Opacity (0-1)': {
+    where: 'data',
+    path: ['marker','opacity'],
+  },
+};
+
+/*Bokehpivot default styling
+For Plots::
+Plot Width (px): 300
+Plot Height (px): 300
+Plot Title:
+Plot Title Font Size: 10
+Opacity (0-1): 0.8
+Sync Axes: Yes
+Flip Axes: No
+X Scale: 1
+X Min:
+X Max:
+X Title:
+X Title Font Size: 10
+X Labels Font Size: 8
+X Labels Degrees: 45
+Y Scale: 1
+Y Min:
+Y Max:
+Y Title:
+Y Title Font Size: 10
+Y Labels Font Size: 8
+Circle Size (Dot Only): 9
+Bar Width (Bar Only): 0.8 (looks like we can set 'width' on the top level of the trace)
+Sort Data: Yes
+Cumulative Sort: None
+Histogram # of bins: 20
+Weighted Histogram: Yes
+Line Width (Line Only): 2
+Show Line/Dot (Range Only): Yes
+Add Net Levels to Stacked: Yes
+Show Bokeh Tools: Yes
+Custom Styles CSV:
+
+For Maps::
+Bin Type: Auto Equal Num
+# of bins (Auto Only): 9
+Ignore Zeros: Yes
+Map Palette: Blues
+Map Palette 2 (Optional):
+Dual Palette Breakpoint (Optional):
+Minimum (Equal Width Only):
+Maximum (Equal Width Only):
+Manual Breakpoints (Manual Only):
+Map Width (px): 500
+Title Font Size: 10
+Boundary Line Width: 0.1
+Line Width: 2
+Opacity (0-1): 1
+Add Arrows: No
+Arrow Size (px): 7
+Arrow Location (0=start, 1=end): 0.8
+*/
 
 $('#file-input').change(function(evt){
   let newFiles = Array.from(evt.target.files);
@@ -407,12 +509,25 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
       <option value="sum">Sum</option>
     </select>
   `;
+  //Add filters
   const filtOptionsHtml = `<option value="none">Add Filter</option>` + optionsHtml;
   wdgHtml += `
     <div class="filter-div">
       <label>Filters</label>
       <select class="add-filter">${filtOptionsHtml}</select>
       <button class="update-filter">Update Filters</button>
+    </div>
+  `;
+  //Add custom styling
+  let styleOptionsHTML = `<option value="none">Add Style</option>`;
+  for (const key in customStyle){
+    styleOptionsHTML += `<option value="${key}">${key}</option>`;
+  }
+  wdgHtml += `
+    <div class="style-div">
+      <label>Change Style</label>
+      <select class="add-style">${styleOptionsHTML}</select>
+      <button class="update-style">Update Styles</button>
     </div>
   `;
 
@@ -514,6 +629,38 @@ $('#report').on('click','.update-filter', function(){
     updateChart(dash_idx, chart_idx);
   }
 });
+
+$('#report').on('change','.add-style', function(){
+  if($(this).val() == 'none'){
+    return;
+  }
+  let html = `
+    <div class="style-outer">
+      <label class="style-name">${$(this).val()}</label>
+      <input type="text">
+    </div>
+  `;
+  $(this).before(html);
+  $(this).val('none');
+});
+
+
+$('#report').on('click','.update-style', function(){
+  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
+  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+  //Build style config
+  trace_config.style={};
+  $(this).siblings('.style-outer').each(function(){
+    trace_config.style[$(this).children('label').text()] = $(this).children('input').val();
+  });
+  if('type' in trace_config && trace_config.type != 'none' &&
+    chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
+    chartTypes[trace_config.type].required.every((val) => val != 'none')
+  ){
+    updateChart(dash_idx, chart_idx);
+  }
+});
+
 function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
   //data_in looks like {col1:[], col2:[],...}
   //agg_type is 'sum',...
@@ -643,17 +790,62 @@ function updateChart(dash_idx, chart_idx){
       let trace_config = chart_config[i];
       let trace_data= chart_data[i].traces;
       let chartType = chartTypes[trace_config.type];
+      //Apply default styling for this chart type.
+      //Note that multiple chart types in the same chart could conflict here, and if so the last will win.
+      if('layout' in chartType){
+        for(const prop in chartType['layout']){
+          plotlyLayout[prop] = chartType['layout'][prop];
+        }
+      }
+      //Add custom styling that applies to layout.
+      //As above, multiple chart types in the same chart could conflict here, and if so the last will win.
+      //Also note that this section is essentially repeated below for 'data' rather than 'layout', which is messy.
+      if('style' in trace_config){
+        for(const prop in trace_config['style']){
+          if(customStyle[prop].where == 'layout'){
+            let currentObj = plotlyLayout;
+            customStyle[prop].path.forEach(function (item, index) {
+              //If this is the final item of path, set it to the value
+              if(index == customStyle[prop].path.length -1){
+                currentObj[item] = trace_config['style'][prop];
+              }
+              //Else add the level if it doesn't exist
+              else if(!(item in currentObj)){
+                currentObj[item] = {};
+              }
+              //Walk to the next level of the object
+              currentObj = currentObj[item];
+            });
+          }
+        }
+      }
+      //Add the plotly traces
       for(const ser in trace_data){
         for(const prop in chartType['attr']){
           trace_data[ser][prop] = chartType['attr'][prop];
         }
-        //Todo: Size needs to be within marker{}
-        plotlyData.push(trace_data[ser]);
-        if('layout' in chartType){
-          for(const prop in chartType['layout']){
-            plotlyLayout[prop] = chartType['layout'][prop];
+        //Add custom styling that applies to data (must be added to each series, but this is still inefficient and messy)
+        if('style' in trace_config){
+          for(const prop in trace_config['style']){
+            if(customStyle[prop].where == 'data'){
+              let currentObj = trace_data[ser];
+              customStyle[prop].path.forEach(function (item, index) {
+                //If this is the final item of path, set it to the value
+                if(index == customStyle[prop].path.length -1){
+                  currentObj[item] = trace_config['style'][prop];
+                }
+                //Else add the level if it doesn't exist
+                else if(!(item in currentObj)){
+                  currentObj[item] = {};
+                }
+                //Walk to the next level of the object
+                currentObj = currentObj[item];
+              });
+            }
           }
         }
+        //Todo: Size needs to be within marker{}
+        plotlyData.push(trace_data[ser]);
       }
     }
     Plotly.react(`chart-dash-${dash_idx}-chart-${chart_idx}`, plotlyData, plotlyLayout, defaultPlotlyConfig);
@@ -802,7 +994,7 @@ function load_config(){
           }
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="${key}"`).val(trc[key]).change();
         }
-        //Finally, filters
+        //Now filters
         if('filter' in trc){
           for (const key in trc['filter']){
             $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .add-filter`).val(key).change();
@@ -812,8 +1004,16 @@ function load_config(){
                 $(this).children('input').prop( "checked", true );
               }
             });
-            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-filter`).click();
           }
+          $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-filter`).click();
+        }
+        //Now custom styles
+        if('style' in trc){
+          for (const key in trc['style']){
+            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .add-style`).val(key).change();
+            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .style-outer input`).last().val(trc['style'][key]).change();
+          }
+          $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-style`).click();
         }
       });
     });
