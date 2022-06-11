@@ -235,49 +235,42 @@ const defaultPlotlyConfig = { //See https://plotly.com/javascript/configuration-
 //Maybe note which properties are in layout and which will be in the trace itself. Maybe just use schema?
 //But perhaps assume that all trace properties are common across trace types, although some, e.g. 
 const customStyle = {
-  'Plot Width (px)': {
-    where: 'layout',
-    path: ['width'],
+  'layout':{
+    'Plot Width (px)': {
+      path: ['width'],
+    },
+    'Plot Height (px)': {
+      path: ['height'],
+    },
+    'Plot Title': {
+      path: ['title','text'],
+    },
+    'Plot Title Font Size': {
+      path: ['title','font','size'],
+    },
+    'X-axis Title': {
+      path: ['xaxis','title','text'],
+    },
+    'X-axis Label Angle (deg)': {
+      path: ['xaxis','tickangle'],
+    },
+    'Y-axis Title': {
+      path: ['yaxis','title','text'],
+    },
   },
-  'Plot Height (px)': {
-    where: 'layout',
-    path: ['height'],
-  },
-  'Plot Title': {
-    where: 'layout',
-    path: ['title','text'],
-  },
-  'Plot Title Font Size': {
-    where: 'layout',
-    path: ['title','font','size'],
-  },
-  'X-axis Title': {
-    where: 'layout',
-    path: ['xaxis','title','text'],
-  },
-  'X-axis Label Angle (deg)': {
-    where: 'layout',
-    path: ['xaxis','tickangle'],
-  },
-  'Y-axis Title': {
-    where: 'layout',
-    path: ['yaxis','title','text'],
-  },
-  'Bar Width': {
-    where: 'data',
-    path: ['width'], //this only gets used for bar charts
-  },
-  'Line Width (pt)': {
-    where: 'data',
-    path: ['line','width'],
-  },
-  'Dot Size (pt)': {
-    where: 'data',
-    path: ['marker','size'],
-  },
-  'Opacity (0-1)': {
-    where: 'data',
-    path: ['marker','opacity'],
+  'data':{
+    'Bar Width': {
+      path: ['width'], //this only gets used for bar charts
+    },
+    'Line Width (pt)': {
+      path: ['line','width'],
+    },
+    'Dot Size (pt)': {
+      path: ['marker','size'],
+    },
+    'Opacity (0-1)': {
+      path: ['marker','opacity'],
+    },
   },
 };
 
@@ -403,14 +396,26 @@ $('#report').on('click','.add-chart', function(){
   let chart_idx = config.dashboards[dash_idx].charts.length;
   config.dashboards[dash_idx].charts[chart_idx] = {traces:[]};
   traceData[dash_idx][chart_idx] = [];
-  $(this).before(`
+  //Custom styling
+  let styleOptionsHTML = `<option value="none">Add Style</option>`;
+  for (const key in customStyle.layout){
+    styleOptionsHTML += `<option value="${key}">${key}</option>`;
+  }
+  //Build html
+  let html = `
     <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-outer">
       <div class="chart-controls">
         <div class="chart-title">Chart ${chart_idx}</div>
         <button class="add-trace">Add Data</button>
+        <div class="chartstyle-div">
+          <label class="styles-label">Change Chart Style</label>
+          <select class="add-style">${styleOptionsHTML}</select>
+          <button class="update-style">Update Styles</button>
+        </div>
       </div>
     </div>
-  `);
+  `;
+  $(this).before(html);
 });
 
 $('#report').on('click','.add-trace', function(){
@@ -519,12 +524,12 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
   `;
   //Add custom styling
   let styleOptionsHTML = `<option value="none">Add Style</option>`;
-  for (const key in customStyle){
+  for (const key in customStyle.data){
     styleOptionsHTML += `<option value="${key}">${key}</option>`;
   }
   wdgHtml += `
     <div class="style-div">
-      <label class="styles-label">Change Style</label>
+      <label class="styles-label">Change Data Style</label>
       <select class="add-style">${styleOptionsHTML}</select>
       <button class="update-style">Update Styles</button>
     </div>
@@ -644,7 +649,7 @@ $('#report').on('change','.add-style', function(){
 });
 
 
-$('#report').on('click','.update-style', function(){
+$('#report').on('click','.style-div .update-style', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   //Build style config
@@ -658,6 +663,17 @@ $('#report').on('click','.update-style', function(){
   ){
     updateChart(dash_idx, chart_idx);
   }
+});
+
+$('#report').on('click','.chartstyle-div .update-style', function(){
+  const [dash_idx, chart_idx] = get_chart_idx(this);
+  const chart_config = config.dashboards[dash_idx].charts[chart_idx];
+  //Build style config
+  chart_config.style={};
+  $(this).siblings('.style-outer').each(function(){
+    chart_config.style[$(this).children('label').text()] = $(this).children('input').val();
+  });
+  updateChart(dash_idx, chart_idx);
 });
 
 $('#report').on('click','.filters-label, .styles-label, .filter-name, .trace-title', function(){
@@ -781,16 +797,16 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
   }
 }
 function updateChart(dash_idx, chart_idx){
-  const chart_config = config.dashboards[dash_idx].charts[chart_idx].traces;
+  const chart_config = config.dashboards[dash_idx].charts[chart_idx];
   const chart_data = traceData[dash_idx][chart_idx];
   if($(`#chart-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
     $(`#dash-${dash_idx}-chart-${chart_idx}`).prepend(`<div id="chart-dash-${dash_idx}-chart-${chart_idx}" class="chart"></div>`);
   }
-  if(chartTypes[chart_config[0].type].engine == 'plotly'){
+  if(chartTypes[chart_config.traces[0].type].engine == 'plotly'){
     let plotlyData = [];
     let plotlyLayout = JSON.parse(JSON.stringify(defaultPlotlyLayout));
     for(let i = 0; i < chart_data.length; i++){
-      let trace_config = chart_config[i];
+      let trace_config = chart_config.traces[i];
       let trace_data= chart_data[i].traces;
       let chartType = chartTypes[trace_config.type];
       //Apply default styling for this chart type.
@@ -800,36 +816,30 @@ function updateChart(dash_idx, chart_idx){
           plotlyLayout[prop] = chartType['layout'][prop];
         }
       }
-      //Add custom styling that applies to layout.
-      //As above, multiple chart types in the same chart could conflict here, and if so the last will win.
-      //Also note that this section is essentially repeated below for 'data' rather than 'layout'.
-      if('style' in trace_config){
-        for(const prop in trace_config['style']){
-          if(customStyle[prop].where == 'layout'){
-            updateObj(plotlyLayout, customStyle[prop].path, trace_config['style'][prop]);
-          }
-        }
-      }
       //Add the plotly traces
       for(const ser in trace_data){
         for(const prop in chartType['attr']){
           trace_data[ser][prop] = chartType['attr'][prop];
         }
-        //Add custom styling that applies to data (must be added to each series, but this is inefficient and messy...)
+        //Add custom styling that applies to data (must be added to each series, even though this is inefficient...)
         if('style' in trace_config){
           for(const prop in trace_config['style']){
-            if(customStyle[prop].where == 'data'){
-              updateObj(trace_data[ser], customStyle[prop].path, trace_config['style'][prop]);
-            }
+            updateObj(trace_data[ser], customStyle.data[prop].path, trace_config['style'][prop]);
           }
         }
         //Todo: Size needs to be within marker{}
         plotlyData.push(trace_data[ser]);
       }
     }
+    //Add custom styling that applies to layout.
+    if('style' in chart_config){
+      for(const prop in chart_config['style']){
+        updateObj(plotlyLayout, customStyle.layout[prop].path, chart_config['style'][prop]);
+      }
+    }
     Plotly.react(`chart-dash-${dash_idx}-chart-${chart_idx}`, plotlyData, plotlyLayout, defaultPlotlyConfig);
     // window.dispatchEvent(new Event('resize')); //This works but maybe we should just be using plotly width and height...
-  } else if(chartTypes[chart_config[0].type].engine == 'google'){
+  } else if(chartTypes[chart_config.traces[0].type].engine == 'google'){
     //I can't figure out how to load google maps script only when needed, something like:
     //$('body').append('<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly"><\/script>');
     //Also note that statement can't have the end script tag exactly because js thinks that thats the end of the script, so we add backslash.
@@ -840,7 +850,7 @@ function updateChart(dash_idx, chart_idx){
       mapTypeId: "terrain",
     });
     for(let i = 0; i < chart_data.length; i++){
-      let trace_config = chart_config[i];
+      let trace_config = chart_config.traces[i];
       let trace_data= chart_data[i].traces;
       let chartType = chartTypes[trace_config.type];
       for(const ser in trace_data){
@@ -883,6 +893,12 @@ function get_idx(that){
   let chart_idx = parseInt($(that).parents('.chart-outer').attr('data-chartID'));
   let trace_idx = parseInt($(that).parents('.trace-controls').attr('data-traceID'));
   return [dash_idx, chart_idx, trace_idx];
+}
+
+function get_chart_idx(that){
+  let dash_idx = parseInt($(that).parents('.dashboard-outer').attr('data-dashboardID'));
+  let chart_idx = parseInt($(that).parents('.chart-outer').attr('data-chartID'));
+  return [dash_idx, chart_idx];
 }
 
 //TODO: should i really have this? Shouldn't i just use transpose below and then shift()?
@@ -1003,7 +1019,7 @@ function load_config(){
           }
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-filter`).click();
         }
-        //Now custom styles
+        //Now custom styles for trace
         if('style' in trc){
           for (const key in trc['style']){
             $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .add-style`).val(key).change();
@@ -1012,6 +1028,14 @@ function load_config(){
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-style`).click();
         }
       });
+      //Now custom styles for chart
+      if('style' in cht){
+        for (const key in cht['style']){
+          $(`#dash-${di}-chart-${ci} .chartstyle-div .add-style`).val(key).change();
+          $(`#dash-${di}-chart-${ci} .chartstyle-div .style-outer input`).last().val(cht['style'][key]).change();
+        }
+        $(`#dash-${di}-chart-${ci} .chartstyle-div .update-style`).click();
+      }
     });
   });
 }
