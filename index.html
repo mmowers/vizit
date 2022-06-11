@@ -799,23 +799,11 @@ function updateChart(dash_idx, chart_idx){
       }
       //Add custom styling that applies to layout.
       //As above, multiple chart types in the same chart could conflict here, and if so the last will win.
-      //Also note that this section is essentially repeated below for 'data' rather than 'layout', which is messy.
+      //Also note that this section is essentially repeated below for 'data' rather than 'layout'.
       if('style' in trace_config){
         for(const prop in trace_config['style']){
           if(customStyle[prop].where == 'layout'){
-            let currentObj = plotlyLayout;
-            customStyle[prop].path.forEach(function (item, index) {
-              //If this is the final item of path, set it to the value
-              if(index == customStyle[prop].path.length -1){
-                currentObj[item] = trace_config['style'][prop];
-              }
-              //Else add the level if it doesn't exist
-              else if(!(item in currentObj)){
-                currentObj[item] = {};
-              }
-              //Walk to the next level of the object
-              currentObj = currentObj[item];
-            });
+            updateObj(plotlyLayout, customStyle[prop].path, trace_config['style'][prop]);
           }
         }
       }
@@ -824,23 +812,11 @@ function updateChart(dash_idx, chart_idx){
         for(const prop in chartType['attr']){
           trace_data[ser][prop] = chartType['attr'][prop];
         }
-        //Add custom styling that applies to data (must be added to each series, but this is still inefficient and messy)
+        //Add custom styling that applies to data (must be added to each series, but this is inefficient and messy...)
         if('style' in trace_config){
           for(const prop in trace_config['style']){
             if(customStyle[prop].where == 'data'){
-              let currentObj = trace_data[ser];
-              customStyle[prop].path.forEach(function (item, index) {
-                //If this is the final item of path, set it to the value
-                if(index == customStyle[prop].path.length -1){
-                  currentObj[item] = trace_config['style'][prop];
-                }
-                //Else add the level if it doesn't exist
-                else if(!(item in currentObj)){
-                  currentObj[item] = {};
-                }
-                //Walk to the next level of the object
-                currentObj = currentObj[item];
-              });
+              updateObj(trace_data[ser], customStyle[prop].path, trace_config['style'][prop]);
             }
           }
         }
@@ -880,6 +856,23 @@ function updateChart(dash_idx, chart_idx){
       }
     }
   }
+}
+
+function updateObj(obj, keys, value){
+  //'obj' is an object, and 'keys' is a path of (nested) keys for which we are setting the 'value'.
+  keys.forEach(function (item, index) {
+    //If this is the final item of path, set it to the value
+    if(index == keys.length -1){
+      obj[item] = value;
+      return;
+    }
+    //Else add the level if it doesn't exist
+    else if(!(item in obj)){
+      obj[item] = {};
+    }
+    //Walk to the next level of the object
+    obj = obj[item];
+  });
 }
 
 function get_idx(that){
