@@ -15,33 +15,27 @@ select{
   font-weight: bold;
   text-decoration: underline;
 }
-
 .dashboard-outer,
 .chart-outer,
 .trace-controls{
   margin-bottom:20px;
 }
-
 .add-dashboard,
 .add-chart,
 .add-trace{
   display: block;
 }
-
 .chart-outer{
   display: inline-block;
 }
-
 .chart{
   width: 500px;
   height: 400px;
 }
-
 .chart-controls{
   border-style: solid;
   border-width: 1px;
 }
-
 .chart + .chart-controls {
   display: none;
 }
@@ -51,11 +45,16 @@ select{
   background-color: white;
   z-index: 10;
 }
-
 .filter-div{
   border: 1px solid black;
 }
-
+.filters-label,
+.styles-label,
+.filter-name,
+.trace-title{
+  color: #0088cc;
+  cursor: pointer;
+}
 text.js-plot-link-container{
   display:none;
 }
@@ -513,7 +512,7 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
   const filtOptionsHtml = `<option value="none">Add Filter</option>` + optionsHtml;
   wdgHtml += `
     <div class="filter-div">
-      <label>Filters</label>
+      <label class="filters-label">Filters</label>
       <select class="add-filter">${filtOptionsHtml}</select>
       <button class="update-filter">Update Filters</button>
     </div>
@@ -525,7 +524,7 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
   }
   wdgHtml += `
     <div class="style-div">
-      <label>Change Style</label>
+      <label class="styles-label">Change Style</label>
       <select class="add-style">${styleOptionsHTML}</select>
       <button class="update-style">Update Styles</button>
     </div>
@@ -659,6 +658,10 @@ $('#report').on('click','.update-style', function(){
   ){
     updateChart(dash_idx, chart_idx);
   }
+});
+
+$('#report').on('click','.filters-label, .styles-label, .filter-name, .trace-title', function(){
+  $(this).siblings().toggle();
 });
 
 function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
