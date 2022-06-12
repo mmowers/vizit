@@ -761,8 +761,8 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
   traceData[dash_idx][chart_idx][trace_idx].traces = {};
   const trace_data = traceData[dash_idx][chart_idx][trace_idx].traces;
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  const raw_data = traceData[dash_idx][chart_idx][trace_idx].aggData;
-  const raw_data_len = raw_data[Object.keys(raw_data)[0]].length;
+  const agg_data = traceData[dash_idx][chart_idx][trace_idx].aggData;
+  const agg_data_len = agg_data[Object.keys(agg_data)[0]].length;
   const traceWdg = [];
   for(const wdg of chartTypes[trace_config.type].wdgTypes){
     if(wdg in trace_config && trace_config[wdg] != 'none'){
@@ -770,8 +770,8 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
     }
   }
   if (traceWdg.includes('series')){
-    for(let i = 0; i < raw_data_len; i++){
-      let seriesVal = raw_data[trace_config['series']][i];
+    for(let i = 0; i < agg_data_len; i++){
+      let seriesVal = agg_data[trace_config['series']][i];
       if(!(seriesVal in trace_data)){
         trace_data[seriesVal] = {};
         trace_data[seriesVal].name = seriesVal;
@@ -780,7 +780,7 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
         }
       }
       for(const wdg of traceWdg){
-        trace_data[seriesVal][wdg].push(raw_data[trace_config[wdg]][i]);
+        trace_data[seriesVal][wdg].push(agg_data[trace_config[wdg]][i]);
       }
     }
   } else{
@@ -789,9 +789,9 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
     for(const wdg of traceWdg){
       trace_data[seriesVal][wdg] = [];
     }
-    for(let i = 0; i < raw_data_len; i++){
+    for(let i = 0; i < agg_data_len; i++){
       for(const wdg of traceWdg){
-        trace_data[seriesVal][wdg].push(raw_data[trace_config[wdg]][i]);
+        trace_data[seriesVal][wdg].push(agg_data[trace_config[wdg]][i]);
       }
     }
   }
@@ -878,7 +878,6 @@ function updateChart(dash_idx, chart_idx){
       $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).height(chart_config.style['Plot Height (px)']);
     }
   }
-
 }
 
 function updateObj(obj, keys, value){
