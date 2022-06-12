@@ -869,6 +869,16 @@ function updateChart(dash_idx, chart_idx){
       }
     }
   }
+  //Common chart styling
+  if('style' in chart_config){
+    if('Plot Width (px)' in chart_config.style){
+      $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).width(chart_config.style['Plot Width (px)']);
+    }
+    if('Plot Height (px)' in chart_config.style){
+      $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).height(chart_config.style['Plot Height (px)']);
+    }
+  }
+
 }
 
 function updateObj(obj, keys, value){
