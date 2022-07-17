@@ -89,7 +89,7 @@ let config_load = null; //this gets replaced if we have saved config
 let config_load_json_file = null;
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
-const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: {'someSeries': {x:[...], y:[...],...},...}}.
+const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: [{x:[], y:[], sepDims:[],...},...]}.
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
 let plotlySchema = Plotly.PlotSchema.get() //I found this on a forum: https://community.plotly.com/t/plotly-json-schema-reference/21261
 // Plotly reference links:
@@ -173,6 +173,15 @@ const chartTypes = {
   }
 };
 
+//Every chart can have series, rows, and columns
+for(const k in chartTypes){
+  if('wdgTypes' in chartTypes[k]){
+    chartTypes[k]['wdgTypes'] = chartTypes[k]['wdgTypes'].concat(['row','col']);
+  }
+}
+
+const sepTraceWdg = ['series','row','col']; //These widgets, if set, will create separate subtraces
+
 const wdgTypes = {
   x: 'X axis',
   y: 'Y axis',
@@ -181,6 +190,8 @@ const wdgTypes = {
   size: 'Size',
   lat: 'Latitude',
   lng: 'Longitude',
+  row: 'Facet Rows',
+  col: 'Facet Columns',
 };
 
 const defaultPlotlyLayout = { //See https://plotly.com/javascript/reference/layout/
@@ -423,7 +434,7 @@ $('#report').on('click','.add-trace', function(){
   let chart_idx = parseInt($(this).parents('.chart-outer').attr('data-chartID'));
   let trace_idx = config.dashboards[dash_idx].charts[chart_idx].traces.length;
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx] = {};
-  traceData[dash_idx][chart_idx][trace_idx] = {}; //when adding explode dimensions, this might be an array instead, structured like [[[row1,col1,series1],{}],[[row1,col1,series2],{}]...]
+  traceData[dash_idx][chart_idx][trace_idx] = {};
   let optionsHtml = `<option value="none">none</option>`;
   for(let fileName of config.fileNames){
     optionsHtml += `<option value="${fileName}">${fileName}</option>`;
@@ -758,40 +769,58 @@ function applyFilters(data_in, filters = {}){
 }
 
 function updateTraceData(dash_idx, chart_idx, trace_idx){
-  traceData[dash_idx][chart_idx][trace_idx].traces = {};
-  const trace_data = traceData[dash_idx][chart_idx][trace_idx].traces;
+  const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
+  thisTraceData.subtraces = []; //E.g. a trace could be a series of lines while a subtrace would be each line (plotly disagrees)
+  const subtrace_data = thisTraceData.subtraces;
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   const agg_data = traceData[dash_idx][chart_idx][trace_idx].aggData;
   const agg_data_len = agg_data[Object.keys(agg_data)[0]].length;
-  const traceWdg = [];
+  const sepWdg = []; //Widgets that cause separate subtraces
+  const nonsepWdg = []; //Widgets that don't cause separate subtraces
   for(const wdg of chartTypes[trace_config.type].wdgTypes){
     if(wdg in trace_config && trace_config[wdg] != 'none'){
-      traceWdg.push(wdg);
+      if(sepTraceWdg.includes(wdg)){
+        sepWdg.push(wdg);
+      } else {
+        nonsepWdg.push(wdg);
+      }
     }
   }
-  if (traceWdg.includes('series')){
+  thisTraceData.sepWdg = sepWdg;
+  if(sepWdg.length == 0){
+    const newTrace = {};
+    for(const wdg of nonsepWdg){
+      newTrace[wdg] = agg_data[trace_config[wdg]];
+    }
+    subtrace_data.push(newTrace);
+  } else{
     for(let i = 0; i < agg_data_len; i++){
-      let seriesVal = agg_data[trace_config['series']][i];
-      if(!(seriesVal in trace_data)){
-        trace_data[seriesVal] = {};
-        trace_data[seriesVal].name = seriesVal;
-        for(const wdg of traceWdg){
-          trace_data[seriesVal][wdg] = [];
+      const sepVals = [];
+      //find all the values of the sepWdg columns
+      for(const wdg of sepWdg){
+        sepVals.push(agg_data[trace_config[wdg]][i]);
+      }
+      //Now loop through the existing subtraces to see if we already have one with the same sepVals
+      let sepValsFound = false;
+      //Would probably be smarter to to start with the previous match, rather than from the beginning...
+      for(const subtrace of subtrace_data){
+        if(arraysEqual(sepVals,subtrace.sepVals)){
+          sepValsFound = true;
+          for(const wdg of nonsepWdg){
+            subtrace[wdg].push(agg_data[trace_config[wdg]][i]);
+          }
+          break;
         }
       }
-      for(const wdg of traceWdg){
-        trace_data[seriesVal][wdg].push(agg_data[trace_config[wdg]][i]);
-      }
-    }
-  } else{
-    let seriesVal = 'noSeries';
-    trace_data[seriesVal] = {};
-    for(const wdg of traceWdg){
-      trace_data[seriesVal][wdg] = [];
-    }
-    for(let i = 0; i < agg_data_len; i++){
-      for(const wdg of traceWdg){
-        trace_data[seriesVal][wdg].push(agg_data[trace_config[wdg]][i]);
+      if(!sepValsFound){
+        const newSubtrace = {sepVals: sepVals};
+        if(sepWdg.includes('series')){
+          newSubtrace.name = agg_data[trace_config['series']][i];
+        }
+        for(const wdg of nonsepWdg){
+          newSubtrace[wdg] = [agg_data[trace_config[wdg]][i]];
+        }
+        subtrace_data.push(newSubtrace);
       }
     }
   }
@@ -807,7 +836,7 @@ function updateChart(dash_idx, chart_idx){
     let plotlyLayout = JSON.parse(JSON.stringify(defaultPlotlyLayout));
     for(let i = 0; i < chart_data.length; i++){
       let trace_config = chart_config.traces[i];
-      let trace_data= chart_data[i].traces;
+      let subtrace_data= chart_data[i].subtraces;
       let chartType = chartTypes[trace_config.type];
       //Apply default styling for this chart type.
       //Note that multiple chart types in the same chart could conflict here, and if so the last will win.
@@ -816,19 +845,19 @@ function updateChart(dash_idx, chart_idx){
           plotlyLayout[prop] = chartType['layout'][prop];
         }
       }
-      //Add the plotly traces
-      for(const ser in trace_data){
+      //Add the plotly traces (equivalent to what we call "subtraces")
+      for(const ser in subtrace_data){
         for(const prop in chartType['attr']){
-          trace_data[ser][prop] = chartType['attr'][prop];
+          subtrace_data[ser][prop] = chartType['attr'][prop];
         }
         //Add custom styling that applies to data (must be added to each series, even though this is inefficient...)
         if('style' in trace_config){
           for(const prop in trace_config['style']){
-            updateObj(trace_data[ser], customStyle.data[prop].path, trace_config['style'][prop]);
+            updateObj(subtrace_data[ser], customStyle.data[prop].path, trace_config['style'][prop]);
           }
         }
         //Todo: Size needs to be within marker{}
-        plotlyData.push(trace_data[ser]);
+        plotlyData.push(subtrace_data[ser]);
       }
     }
     //Add custom styling that applies to layout.
@@ -851,17 +880,17 @@ function updateChart(dash_idx, chart_idx){
     });
     for(let i = 0; i < chart_data.length; i++){
       let trace_config = chart_config.traces[i];
-      let trace_data= chart_data[i].traces;
+      let subtrace_data= chart_data[i].subtraces;
       let chartType = chartTypes[trace_config.type];
-      for(const ser in trace_data){
-        for (let j = 0; j < trace_data[ser]['lat'].length; j++) {
+      for(const ser in subtrace_data){
+        for (let j = 0; j < subtrace_data[ser]['lat'].length; j++) {
           let mapCircle = new google.maps.Circle({
             strokeWeight: 0,
             fillColor: "#FF0000",
             // fillOpacity: -1/2000*thisMetric + 1, //y=mx + b, where y is opacity, from 0 to 1.
             map:gMap,
-            center: {lat: trace_data[ser]['lat'][j], lng: trace_data[ser]['lng'][j]},
-            radius: trace_data[ser]['size'][j],
+            center: {lat: subtrace_data[ser]['lat'][j], lng: subtrace_data[ser]['lng'][j]},
+            radius: subtrace_data[ser]['size'][j],
             // customText: 'Reduced Cost: ' + thisMetric + ' $/kW',
           });
           // google.maps.event.addListener(mapCircle, 'click', gmCircleListener);
@@ -944,6 +973,17 @@ function transpose(matrix_in) {
     }
   }
   return matrix_out;
+}
+
+//The following is from https://stackoverflow.com/questions/3115982/how-to-check-if-two-arrays-are-equal-with-javascript
+function arraysEqual(a, b) {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  if (a.length !== b.length) return false;
+  for (var i = 0; i < a.length; ++i) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 //I got the following mostly from https://betterprogramming.pub/check-if-an-array-is-within-a-2d-array-using-javascript-c534d96cb269
