@@ -787,12 +787,19 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
     }
   }
   thisTraceData.sepWdg = sepWdg;
+  const sepWdgUniques = {};
+  thisTraceData.sepWdgUniques = sepWdgUniques;
+  for(const wdg of sepWdg){
+    sepWdgUniques[wdg] = [];
+  }
+  //If we don't have sepWdg, it's easy, just pass through the full data as one subtrace
   if(sepWdg.length == 0){
     const newTrace = {};
     for(const wdg of nonsepWdg){
       newTrace[wdg] = agg_data[trace_config[wdg]];
     }
-    subtrace_data.push(newTrace);
+    subtrace_data.push(newTrace); //the array has only one element
+  //If we have sepWdg, we need to create a subtrace for each combo of sepWdg values.
   } else{
     for(let i = 0; i < agg_data_len; i++){
       const sepVals = [];
@@ -800,9 +807,11 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
       for(const wdg of sepWdg){
         sepVals.push(agg_data[trace_config[wdg]][i]);
       }
-      //Now loop through the existing subtraces to see if we already have one with the same sepVals
+      //Now loop through the existing subtraces to see if we already have one with the same sepVals.
+      //Would probably be smarter to to start with the previous match, rather than from the beginning?
+      //Or should I save sepVals as a key, using JSON.stringify? Sounds like JSON.stringify might
+      //be slow though itself for small payloads. Might as well not micro-optimize now...
       let sepValsFound = false;
-      //Would probably be smarter to to start with the previous match, rather than from the beginning...
       for(const subtrace of subtrace_data){
         if(arraysEqual(sepVals,subtrace.sepVals)){
           sepValsFound = true;
@@ -814,13 +823,16 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
       }
       if(!sepValsFound){
         const newSubtrace = {sepVals: sepVals};
-        if(sepWdg.includes('series')){
-          newSubtrace.name = agg_data[trace_config['series']][i];
-        }
         for(const wdg of nonsepWdg){
           newSubtrace[wdg] = [agg_data[trace_config[wdg]][i]];
         }
         subtrace_data.push(newSubtrace);
+        //Add to sepWdgUniques if we have any uniques
+        for(let j = 0; j < sepWdg.length; j++){
+          if(!(sepWdgUniques[sepWdg[j]].includes(sepVals[j]))){
+            sepWdgUniques[sepWdg[j]].push(sepVals[j]);
+          }
+        }
       }
     }
   }
@@ -836,6 +848,7 @@ function updateChart(dash_idx, chart_idx){
     let plotlyLayout = JSON.parse(JSON.stringify(defaultPlotlyLayout));
     for(let i = 0; i < chart_data.length; i++){
       let trace_config = chart_config.traces[i];
+      let sepWdg = chart_data[i].sepWdg;
       let subtrace_data= chart_data[i].subtraces;
       let chartType = chartTypes[trace_config.type];
       //Apply default styling for this chart type.
@@ -846,18 +859,21 @@ function updateChart(dash_idx, chart_idx){
         }
       }
       //Add the plotly traces (equivalent to what we call "subtraces")
-      for(const ser in subtrace_data){
+      for(const ser of subtrace_data){
+        if(sepWdg.includes('series')){
+          ser.name = ser.sepVals[sepWdg.indexOf('series')];
+        }
         for(const prop in chartType['attr']){
-          subtrace_data[ser][prop] = chartType['attr'][prop];
+          ser[prop] = chartType['attr'][prop];
         }
         //Add custom styling that applies to data (must be added to each series, even though this is inefficient...)
         if('style' in trace_config){
           for(const prop in trace_config['style']){
-            updateObj(subtrace_data[ser], customStyle.data[prop].path, trace_config['style'][prop]);
+            updateObj(ser, customStyle.data[prop].path, trace_config['style'][prop]);
           }
         }
         //Todo: Size needs to be within marker{}
-        plotlyData.push(subtrace_data[ser]);
+        plotlyData.push(ser);
       }
     }
     //Add custom styling that applies to layout.
@@ -882,15 +898,15 @@ function updateChart(dash_idx, chart_idx){
       let trace_config = chart_config.traces[i];
       let subtrace_data= chart_data[i].subtraces;
       let chartType = chartTypes[trace_config.type];
-      for(const ser in subtrace_data){
-        for (let j = 0; j < subtrace_data[ser]['lat'].length; j++) {
+      for(const ser of subtrace_data){
+        for (let j = 0; j < ser['lat'].length; j++) {
           let mapCircle = new google.maps.Circle({
             strokeWeight: 0,
             fillColor: "#FF0000",
             // fillOpacity: -1/2000*thisMetric + 1, //y=mx + b, where y is opacity, from 0 to 1.
             map:gMap,
-            center: {lat: subtrace_data[ser]['lat'][j], lng: subtrace_data[ser]['lng'][j]},
-            radius: subtrace_data[ser]['size'][j],
+            center: {lat: ser['lat'][j], lng: ser['lng'][j]},
+            radius: ser['size'][j],
             // customText: 'Reduced Cost: ' + thisMetric + ' $/kW',
           });
           // google.maps.event.addListener(mapCircle, 'click', gmCircleListener);
