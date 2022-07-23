@@ -180,7 +180,7 @@ for(const k in chartTypes){
   }
 }
 
-const sepTraceWdg = ['row','col','series']; //These widgets, if set, will create separate subtraces. The order is important here. Rows of columns of series
+const sepTraceWdg = ['series','row','col']; //These widgets, if set, will create separate subtraces
 
 const wdgTypes = {
   x: 'X axis',
@@ -770,51 +770,57 @@ function applyFilters(data_in, filters = {}){
 
 function updateTraceData(dash_idx, chart_idx, trace_idx){
   const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
-  thisTraceData.subtraces = {}; //E.g. a trace could be a series of lines while a subtrace would be each line (plotly disagrees)
+  thisTraceData.subtraces = []; //E.g. a trace could be a series of lines while a subtrace would be each line (plotly disagrees)
+  const subtrace_data = thisTraceData.subtraces;
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   const agg_data = traceData[dash_idx][chart_idx][trace_idx].aggData;
   const agg_data_len = agg_data[Object.keys(agg_data)[0]].length;
   const sepWdg = []; //Widgets that cause separate subtraces
   const nonsepWdg = []; //Widgets that don't cause separate subtraces
-  //order matters for sepWdg, needs to be rows of columns of series, so we loop over sepTraceWdg.
-  for(const wdg of sepTraceWdg){
-    if(wdg in trace_config && trace_config[wdg] != 'none'){
-      sepWdg.push(wdg);
-    }
-  }
-  //Now get nonsepWdg
   for(const wdg of chartTypes[trace_config.type].wdgTypes){
-    if(wdg in trace_config && trace_config[wdg] != 'none' && !(sepTraceWdg.includes(wdg))){
-      nonsepWdg.push(wdg);
+    if(wdg in trace_config && trace_config[wdg] != 'none'){
+      if(sepTraceWdg.includes(wdg)){
+        sepWdg.push(wdg);
+      } else {
+        nonsepWdg.push(wdg);
+      }
     }
   }
   thisTraceData.sepWdg = sepWdg;
-  //If we don't have sepWdg, it's easy, just pass through the full data
   if(sepWdg.length == 0){
+    const newTrace = {};
     for(const wdg of nonsepWdg){
-      thisTraceData.subtraces[wdg] = agg_data[trace_config[wdg]];
+      newTrace[wdg] = agg_data[trace_config[wdg]];
     }
-  //If we have sepWdg, we need to create the nested object, a different level for each sepWdg.
+    subtrace_data.push(newTrace);
   } else{
     for(let i = 0; i < agg_data_len; i++){
-      let thisLevel = thisTraceData.subtraces;
-      //first loop over sepWdg to add the levels of the object
-      for(const swdg of sepWdg){
-        let sepVal = agg_data[trace_config[swdg]][i];
-        if(!(sepVal in thisLevel)){
-          thisLevel[sepVal] = {};
-          //if this is the final sepWdg, create the empty arrays for each nonsepWdg
-          if(swdg == sepWdg[sepWdg.length - 1]){
-            for(const nwdg of nonsepWdg){
-              thisLevel[sepVal][nwdg] = [];
-            }
-          }
-        }
-        thisLevel = thisLevel[sepVal];
+      const sepVals = [];
+      //find all the values of the sepWdg columns
+      for(const wdg of sepWdg){
+        sepVals.push(agg_data[trace_config[wdg]][i]);
       }
-      //Now loop over nonsepWdg and fill the arrays
-      for(const nwdg of nonsepWdg){
-        thisLevel[nwdg].push(agg_data[trace_config[nwdg]][i]);
+      //Now loop through the existing subtraces to see if we already have one with the same sepVals
+      let sepValsFound = false;
+      //Would probably be smarter to to start with the previous match, rather than from the beginning...
+      for(const subtrace of subtrace_data){
+        if(arraysEqual(sepVals,subtrace.sepVals)){
+          sepValsFound = true;
+          for(const wdg of nonsepWdg){
+            subtrace[wdg].push(agg_data[trace_config[wdg]][i]);
+          }
+          break;
+        }
+      }
+      if(!sepValsFound){
+        const newSubtrace = {sepVals: sepVals};
+        if(sepWdg.includes('series')){
+          newSubtrace.name = agg_data[trace_config['series']][i];
+        }
+        for(const wdg of nonsepWdg){
+          newSubtrace[wdg] = [agg_data[trace_config[wdg]][i]];
+        }
+        subtrace_data.push(newSubtrace);
       }
     }
   }
