@@ -230,6 +230,7 @@ const defaultPlotlyLayout = { //See https://plotly.com/javascript/reference/layo
     },
     automargin: true,
   },
+  annotations:[],
 };
 
 const defaultPlotlyConfig = { //See https://plotly.com/javascript/configuration-options
@@ -849,6 +850,7 @@ function updateChart(dash_idx, chart_idx){
     for(let i = 0; i < chart_data.length; i++){
       let trace_config = chart_config.traces[i];
       let sepWdg = chart_data[i].sepWdg;
+      let sepWdgUniques = chart_data[i].sepWdgUniques;
       let subtrace_data= chart_data[i].subtraces;
       let chartType = chartTypes[trace_config.type];
       //Apply default styling for this chart type.
@@ -858,10 +860,69 @@ function updateChart(dash_idx, chart_idx){
           plotlyLayout[prop] = chartType['layout'][prop];
         }
       }
-      //Add the plotly traces (equivalent to what we call "subtraces")
-      for(const ser of subtrace_data){
+      //Add faceting. If we have multiple traces for a given chart, this will overwrite the layout for each one, so they need to correspond.
+      if(sepWdg.includes('row') || sepWdg.includes('col')){
+        //TODO: Allow for "independent" pattern, defaulting to ~square rows/columns but allowing user-specified row number or column number.
+        //Note that "independent" pattern requires we simply use the subtrace number j to set both xaxis and yaxis.
+        plotlyLayout.grid = {pattern:'coupled'};
+        plotlyLayout.grid.rows = sepWdg.includes('row') ? sepWdgUniques['row'].length : 1;
+        plotlyLayout.grid.columns = sepWdg.includes('col') ? sepWdgUniques['col'].length : 1;
+      }
+      //Add the plotly traces (what we call "subtraces")
+      let seriesVals = []; //As we go, we'll add unique elements to seriesVals, and if they exist, showLegend will be false.
+      for(const [j, ser] of subtrace_data.entries()){
+        let xaxis = 'x'; //These are defaults that can change below if we have rows/columns
+        let yaxis = 'y'; //These are defaults that can change below if we have rows/columns
+        if(sepWdg.includes('row')){
+          var rowVal = ser.sepVals[sepWdg.indexOf('row')];
+          let rowNum = sepWdgUniques['row'].indexOf(rowVal) + 1; //axis numbers are one-indexed
+          if(rowNum > 1){ //when rowNum = 1, we don't need to specify the yaxis, and it will default to 'y' (which is used instead of 'y1' for some reason).
+            yaxis = `y${rowNum}`;
+          }
+        }
+        if(sepWdg.includes('col')){
+          var colVal = ser.sepVals[sepWdg.indexOf('col')];
+          let colNum = sepWdgUniques['col'].indexOf(colVal) + 1; //axis numbers are one-indexed
+          if(colNum > 1){ //when colNum = 1, we don't need to specify the yaxis, and it will default to 'x' (which is used instead of 'x1' for some reason).
+            xaxis = `x${colNum}`;
+          }
+        }
+        ser['xaxis'] = xaxis;
+        ser['yaxis'] = yaxis;
+        //Add subplot titles via annotations.
+        //TODO: Perhaps I could just add facet labels on bottom and left using layout.xaxis.title, layout.yaxis.title,
+        //layout.xaxis2.title etc with <br> between the labels and the actual x and y titles.
+        //Alternatively, I could use annotations on top/bottom and left/right.
+        if(sepWdg.includes('row') || sepWdg.includes('col')){
+          let subtitle = '';
+          if(sepWdg.includes('row') && sepWdg.includes('col')){
+            subtitle = `${rowVal}, ${colVal}`;
+          } else if(sepWdg.includes('row')){
+            subtitle = `${rowVal}`;
+          } else if(sepWdg.includes('col')){
+            subtitle = `${colVal}`;
+          }
+          plotlyLayout.annotations.push({
+            text: subtitle,
+            showarrow: false,
+            x: 0.5,
+            xref: `${xaxis} domain`,
+            y: 1.1,
+            yref: `${yaxis} domain`,
+          });
+        }
         if(sepWdg.includes('series')){
           ser.name = ser.sepVals[sepWdg.indexOf('series')];
+        } else{
+          ser.name = 'data';
+          updateObj(ser, ['marker','color'], 'deepskyblue');
+          updateObj(ser, ['line','color'], 'deepskyblue');
+        }
+        ser.legendgroup = ser.name;
+        if(seriesVals.includes(ser.name)){
+          ser.showlegend = false;
+        } else{
+          seriesVals.push(ser.name);
         }
         for(const prop in chartType['attr']){
           ser[prop] = chartType['attr'][prop];
