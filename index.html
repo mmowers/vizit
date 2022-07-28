@@ -218,18 +218,6 @@ const defaultPlotlyLayout = { //See https://plotly.com/javascript/reference/layo
       b: 5,
     },
   },
-  yaxis: {
-    title: {
-      text: '',
-    },
-    automargin: true,
-  },
-  xaxis: {
-    title: {
-      text: '',
-    },
-    automargin: true,
-  },
   annotations:[],
 };
 
@@ -873,43 +861,41 @@ function updateChart(dash_idx, chart_idx){
       for(const [j, ser] of subtrace_data.entries()){
         let xaxis = 'x'; //These are defaults that can change below if we have rows/columns
         let yaxis = 'y'; //These are defaults that can change below if we have rows/columns
+        let layoutXaxis = 'xaxis';
+        let layoutYaxis = 'yaxis';
+        let rowLabel = '';
+        let colLabel = '';
         if(sepWdg.includes('row')){
           var rowVal = ser.sepVals[sepWdg.indexOf('row')];
           let rowNum = sepWdgUniques['row'].indexOf(rowVal) + 1; //axis numbers are one-indexed
           if(rowNum > 1){ //when rowNum = 1, we don't need to specify the yaxis, and it will default to 'y' (which is used instead of 'y1' for some reason).
             yaxis = `y${rowNum}`;
+            layoutYaxis = `yaxis${rowNum}`;
           }
+          rowLabel = `<b>${rowVal}</b><br><br>`;
         }
         if(sepWdg.includes('col')){
           var colVal = ser.sepVals[sepWdg.indexOf('col')];
           let colNum = sepWdgUniques['col'].indexOf(colVal) + 1; //axis numbers are one-indexed
           if(colNum > 1){ //when colNum = 1, we don't need to specify the yaxis, and it will default to 'x' (which is used instead of 'x1' for some reason).
             xaxis = `x${colNum}`;
+            layoutXaxis = `xaxis${colNum}`;
           }
+          colLabel = `<br><br><b>${colVal}</b>`;
         }
         ser['xaxis'] = xaxis;
         ser['yaxis'] = yaxis;
-        //Add subplot titles via annotations.
-        //TODO: Perhaps I could just add facet labels on bottom and left using layout.xaxis.title, layout.yaxis.title,
-        //layout.xaxis2.title etc with <br> between the labels and the actual x and y titles.
-        //Alternatively, I could use annotations on top/bottom and left/right.
-        if(sepWdg.includes('row') || sepWdg.includes('col')){
-          let subtitle = '';
-          if(sepWdg.includes('row') && sepWdg.includes('col')){
-            subtitle = `${rowVal}, ${colVal}`;
-          } else if(sepWdg.includes('row')){
-            subtitle = `${rowVal}`;
-          } else if(sepWdg.includes('col')){
-            subtitle = `${colVal}`;
-          }
-          plotlyLayout.annotations.push({
-            text: subtitle,
-            showarrow: false,
-            x: 0.5,
-            xref: `${xaxis} domain`,
-            y: 1.1,
-            yref: `${yaxis} domain`,
-          });
+        if('x' in trace_config){
+          plotlyLayout[layoutXaxis] = {
+            automargin: true,
+            title: `<br>${trace_config.x}${colLabel}`,
+          };
+        }
+        if('y' in trace_config){
+          plotlyLayout[layoutYaxis] = {
+            automargin: true,
+            title: `${rowLabel}${trace_config.y}<br>`,
+          };
         }
         if(sepWdg.includes('series')){
           ser.name = ser.sepVals[sepWdg.indexOf('series')];
@@ -1111,6 +1097,7 @@ function load_config(){
   }
   config.fileNames = config_load.fileNames;
   //Configure all the charts like a user would.
+  //TODO: Do all configuration before applyFilters, aggregate, updateTraceData, and updateChart, and then execute in that order.
   config_load.dashboards.forEach((db, di) => {
     $('.add-dashboard').click();
     db.charts.forEach((cht, ci) => {
