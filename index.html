@@ -164,13 +164,27 @@ const chartTypes = {
     defaultAgg: 'sum',
     aggCol: 'z',
   },
-  'lat/lng map':{
+  'lat/lng/size google map':{
     wdgTypes: ['lat','lng','size','series'],
     required:['lat','lng','size'],
     defaultAgg: 'none',
     aggCol: 'size',
     engine:'google',
-  }
+  },
+  'lat/lon plotly map':{
+    engine:'plotly',
+    attr: {
+      type: "scattermapbox",
+    },
+    wdgTypes: ['lat','lon'],
+    required:['lat','lon'],
+    defaultAgg: 'none',
+    aggCol: 'none',
+    layout:{
+      dragmode: "zoom",
+      mapbox: { style: "open-street-map", center: { lat: 38, lon: -90 }, zoom: 3 },
+    }
+  },
 };
 
 //Every chart can have series, rows, and columns
@@ -190,6 +204,7 @@ const wdgTypes = {
   size: 'Size',
   lat: 'Latitude',
   lng: 'Longitude',
+  lon: 'Longitude',
   row: 'Facet Rows',
   col: 'Facet Columns',
 };
