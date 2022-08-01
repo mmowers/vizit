@@ -164,13 +164,6 @@ const chartTypes = {
     defaultAgg: 'sum',
     aggCol: 'z',
   },
-  'lat/lng/size google map':{
-    wdgTypes: ['lat','lng','size','name'],
-    required:['lat','lng','size'],
-    defaultAgg: 'none',
-    aggCol: 'size',
-    engine:'google',
-  },
   'lat/lon plotly map':{
     engine:'plotly',
     attr: {
@@ -184,6 +177,13 @@ const chartTypes = {
       dragmode: "zoom",
       mapbox: { style: "open-street-map", center: { lat: 38, lon: -90 }, zoom: 3 },
     }
+  },
+  'lat/lng/size google map':{
+    wdgTypes: ['lat','lng','size','name'],
+    required:['lat','lng','size'],
+    defaultAgg: 'none',
+    aggCol: 'size',
+    engine:'google',
   },
 };
 
