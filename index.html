@@ -164,6 +164,21 @@ const chartTypes = {
     defaultAgg: 'sum',
     aggCol: 'z',
   },
+  'US State plotly map':{
+    engine:'plotly',
+    attr: {
+      type: "choropleth",
+      locationmode: 'USA-states',
+      autocolorscale: true,
+    },
+    wdgTypes: ['locations','z','text'],
+    required:['locations','z'],
+    defaultAgg: 'sum',
+    aggCol: 'z',
+    layout:{
+      geo: {scope:'usa'},
+    }
+  },
   'lat/lon plotly map':{
     engine:'plotly',
     attr: {
@@ -201,6 +216,7 @@ const wdgTypes = {
   y: 'Y axis',
   z: 'Z axis',
   name: 'Color',
+  locations: 'State Codes',
   text: 'Hover Text',
   size: 'Size',
   marker_size: 'Marker Size',
