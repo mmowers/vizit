@@ -113,7 +113,7 @@ const chartTypes = {
       type: 'scatter',
       mode: 'markers',
     },
-    wdgTypes: ['x','y','series','size'],
+    wdgTypes: ['x','y','name','size'],
     required: ['y'],
     defaultAgg: 'sum',
     aggCol: 'y',
@@ -124,7 +124,7 @@ const chartTypes = {
       type: 'scatter',
       mode: 'lines',
     },
-    wdgTypes: ['x','y','series'],
+    wdgTypes: ['x','y','name'],
     required: ['y'],
     defaultAgg: 'sum',
     aggCol: 'y',
@@ -135,7 +135,7 @@ const chartTypes = {
       type: 'scatter',
       mode: 'lines+markers',
     },
-    wdgTypes: ['x','y','series','size'],
+    wdgTypes: ['x','y','name','size'],
     required: ['y'],
     defaultAgg: 'sum',
     aggCol: 'y',
@@ -145,7 +145,7 @@ const chartTypes = {
     attr: {
       type: 'bar',
     },
-    wdgTypes: ['x','y','series'],
+    wdgTypes: ['x','y','name'],
     required: ['y'],
     defaultAgg: 'sum',
     aggCol: 'y',
@@ -159,13 +159,13 @@ const chartTypes = {
       type: 'scatter3D',
       mode: 'markers',
     },
-    wdgTypes: ['x','y','z','series','size'],
+    wdgTypes: ['x','y','z','name','size'],
     required: ['x','y','z'],
     defaultAgg: 'sum',
     aggCol: 'z',
   },
   'lat/lng/size google map':{
-    wdgTypes: ['lat','lng','size','series'],
+    wdgTypes: ['lat','lng','size','name'],
     required:['lat','lng','size'],
     defaultAgg: 'none',
     aggCol: 'size',
@@ -176,7 +176,7 @@ const chartTypes = {
     attr: {
       type: "scattermapbox",
     },
-    wdgTypes: ['lat','lon'],
+    wdgTypes: ['lat','lon','name'],
     required:['lat','lon'],
     defaultAgg: 'none',
     aggCol: 'none',
@@ -194,13 +194,13 @@ for(const k in chartTypes){
   }
 }
 
-const sepTraceWdg = ['series','row','col']; //These widgets, if set, will create separate subtraces
+const sepTraceWdg = ['name','row','col']; //These widgets, if set, will create separate subtraces
 
 const wdgTypes = {
   x: 'X axis',
   y: 'Y axis',
   z: 'Z axis',
-  series: 'Color',
+  name: 'Color',
   size: 'Size',
   lat: 'Latitude',
   lng: 'Longitude',
@@ -912,8 +912,8 @@ function updateChart(dash_idx, chart_idx){
             title: `${rowLabel}${trace_config.y}<br>`,
           };
         }
-        if(sepWdg.includes('series')){
-          ser.name = ser.sepVals[sepWdg.indexOf('series')];
+        if(sepWdg.includes('name')){
+          ser.name = ser.sepVals[sepWdg.indexOf('name')];
         } else{
           ser.name = 'data';
           updateObj(ser, ['marker','color'], 'deepskyblue');
