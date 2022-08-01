@@ -272,6 +272,15 @@ const customStyle = {
     'Y-axis Title': {
       path: ['yaxis','title','text'],
     },
+    'Map Zoom': {
+      path: ['mapbox','zoom'],
+    },
+    'Map Center Latitude': {
+      path: ['mapbox','center','lat'],
+    },
+    'Map Center Longitude': {
+      path: ['mapbox','center','lon'],
+    },
   },
   'data':{
     'Bar Width': {
@@ -915,7 +924,6 @@ function updateChart(dash_idx, chart_idx){
         if(sepWdg.includes('name')){
           ser.name = ser.sepVals[sepWdg.indexOf('name')];
         } else{
-          ser.name = 'data';
           updateObj(ser, ['marker','color'], 'deepskyblue');
           updateObj(ser, ['line','color'], 'deepskyblue');
         }
