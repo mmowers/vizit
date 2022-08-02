@@ -714,7 +714,10 @@ $('#report').on('click','.chartstyle-div .update-style', function(){
   $(this).siblings('.style-outer').each(function(){
     chart_config.style[$(this).children('label').text()] = $(this).children('input').val();
   });
-  updateChart(dash_idx, chart_idx);
+  //Make sure we even have a chart to update and, if so, update the chart.
+  if(document.getElementById(`chart-dash-${dash_idx}-chart-${chart_idx}`)){
+    updateChart(dash_idx, chart_idx);
+  }
 });
 
 $('#report').on('click','.filters-label, .styles-label, .filter-name, .trace-title', function(){
@@ -1141,12 +1144,19 @@ function load_config(){
     return;
   }
   config.fileNames = config_load.fileNames;
-  //Configure all the charts like a user would.
-  //TODO: Do all configuration before applyFilters, aggregate, updateTraceData, and updateChart, and then execute in that order.
+  //Configure all the charts like a user would, but do the required widgets last so the charts only get built once.
   config_load.dashboards.forEach((db, di) => {
     $('.add-dashboard').click();
     db.charts.forEach((cht, ci) => {
       $(`[data-dashboardID="${di}"] .add-chart`).click();
+      //Add custom styles for chart
+      if('style' in cht){
+        for (const key in cht['style']){
+          $(`#dash-${di}-chart-${ci} .chartstyle-div .add-style`).val(key).change();
+          $(`#dash-${di}-chart-${ci} .chartstyle-div .style-outer input`).last().val(cht['style'][key]).change();
+        }
+        $(`#dash-${di}-chart-${ci} .chartstyle-div .update-style`).click();
+      }
       cht.traces.forEach((trc, ti) => {
         $(`#dash-${di}-chart-${ci} .add-trace`).click();
         //dataSource first
@@ -1156,13 +1166,6 @@ function load_config(){
         //Now type
         if('type' in trc){
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="type"]`).val(trc['type']).change();
-        }
-        //Now everything else, except filters
-        for (const key in trc){
-          if(['filter','dataSource','type'].includes(key)){
-            continue;
-          }
-          $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="${key}"`).val(trc[key]).change();
         }
         //Now filters
         if('filter' in trc){
@@ -1185,15 +1188,22 @@ function load_config(){
           }
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-style`).click();
         }
-      });
-      //Now custom styles for chart
-      if('style' in cht){
-        for (const key in cht['style']){
-          $(`#dash-${di}-chart-${ci} .chartstyle-div .add-style`).val(key).change();
-          $(`#dash-${di}-chart-${ci} .chartstyle-div .style-outer input`).last().val(cht['style'][key]).change();
+        //Now non-required widgets
+        for (const key in trc){
+          if(chartTypes[trc['type']].required.includes(key)){
+            continue;
+          }
+          if(chartTypes[trc['type']].wdgTypes.concat(['agg']).includes(key)){
+            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="${key}"`).val(trc[key]).change();
+          }
         }
-        $(`#dash-${di}-chart-${ci} .chartstyle-div .update-style`).click();
-      }
+        //Now required widgets
+        for (const key in trc){
+          if(chartTypes[trc['type']].required.includes(key)){
+            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="${key}"`).val(trc[key]).change();
+          }
+        }
+      });
     });
   });
 }
