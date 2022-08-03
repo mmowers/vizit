@@ -55,6 +55,12 @@ select{
   color: #0088cc;
   cursor: pointer;
 }
+.add-style,
+.update-style,
+.add-filter,
+.update-filter{
+  display: none;
+}
 text.js-plot-link-container{
   display:none;
 }
@@ -447,12 +453,12 @@ $('#report').on('click','.add-chart', function(){
     <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-outer">
       <div class="chart-controls">
         <div class="chart-title">Chart ${chart_idx}</div>
-        <button class="add-trace">Add Data</button>
         <div class="chartstyle-div">
           <label class="styles-label">Change Chart Style</label>
           <select class="add-style">${styleOptionsHTML}</select>
           <button class="update-style">Update Styles</button>
         </div>
+        <button class="add-trace">Add Data</button>
       </div>
     </div>
   `;
@@ -558,7 +564,7 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
   const filtOptionsHtml = `<option value="none">Add Filter</option>` + optionsHtml;
   wdgHtml += `
     <div class="filter-div">
-      <label class="filters-label">Filters</label>
+      <label class="filters-label">Add Filters</label>
       <select class="add-filter">${filtOptionsHtml}</select>
       <button class="update-filter">Update Filters</button>
     </div>
@@ -688,7 +694,6 @@ $('#report').on('change','.add-style', function(){
   $(this).before(html);
   $(this).val('none');
 });
-
 
 $('#report').on('click','.style-div .update-style', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
