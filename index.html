@@ -66,6 +66,9 @@ select{
 #global-config{
   display: none;
 }
+#global-style-file{
+  display: inline-block;
+}
 text.js-plot-link-container{
   display:none;
 }
@@ -74,6 +77,7 @@ text.js-plot-link-container{
 }
 .tooltip-parent{
   position: relative;
+  color: #0088cc;
 }
 .tooltip{
   display: none;
@@ -84,8 +88,8 @@ text.js-plot-link-container{
   padding: 10px;
   position: absolute;
   z-index: 1;
-  bottom: 15px;
-  left: 25px;
+  top: 7px;
+  left: 7px;
 }
 .tooltip-parent:hover .tooltip {
   display: block;
@@ -103,20 +107,24 @@ text.js-plot-link-container{
 <ul id="file-list">(no files selected)</ul>
 <div id="global-config-header">Global Config</div>
 <div id="global-config">
+  Styling file:
+  <select id="global-style-file" class="standard-file-select">
+    <option value="none">none</option>
+  </select>
   <span class="tooltip-parent">
-    Styling file:
+    ?
     <span class="tooltip">
       This file must have three columns named 'column_name', 'column_value', and 'color'. The order
       of the rows will determine the order of display.
     </span>
   </span>
-  <input type="file" id="myfile" name="myfile">
-</div>
+  </div>
 <div id="report">
   <button class="add-dashboard">Add Dashboard</button>
 </div>
 <div><span id="download-html">Download HTML</span></div>
 <div><span id="download-json">Download config JSON</span></div>
+
 <script>
 'use strict';
 const files = {}; //list of html File objects
@@ -125,6 +133,7 @@ let config_load_json_file = null;
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: [{x:[], y:[], sepDims:[],...},...]}.
+let globalStyles = {}; //e.g. {col_name_1: {col_val_1: {color: '', order:''}}}
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
 let plotlySchema = Plotly.PlotSchema.get() //I found this on a forum: https://community.plotly.com/t/plotly-json-schema-reference/21261
 // Plotly reference links:
@@ -454,11 +463,47 @@ $('#file-input').change(function(evt){
     };
     reader.readAsText(config_load_json_file);
   }
+  //Update global style file selector options
+  //TODO: Keep selected options when new files are added. Right now it resets to none.
+  //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
+  let optionsHtml = `<option value="none">none</option>`;
+  for(let fileName of config.fileNames){
+    optionsHtml += `<option value="${fileName}">${fileName}</option>`;
+  }
+  $('.standard-file-select').html(optionsHtml);
 });
 
 $('#global-config-header').click(function(){
   $('#global-config').toggle();
 });
+
+$('#global-style-file').change(function(){
+  let selectFile = $(this).val();
+  config.globalStyleFile = selectFile;
+  //If we haven't already gotten the file, grab the data.
+  if(!(selectFile in rawData)){
+    Papa.parse(files[selectFile], {
+      worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
+      header: false,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: function(results, file) {
+        rawData[selectFile] = transpose_to_obj(results.data);
+        updateGlobalStyles(rawData[selectFile]);
+      }
+    });
+  } else{
+    updateGlobalStyles(rawData[selectFile]);
+  }
+});
+
+function updateGlobalStyles(data){
+  globalStyles = {};
+  for(let i = 0; i < data.column_value.length; i++){
+    updateObj(globalStyles, [data.column_name[i], data.column_value[i], 'color'], data.color[i]);
+    updateObj(globalStyles, [data.column_name[i], data.column_value[i], 'order'], i);
+  }
+}
 
 $('#report').on('click','.add-dashboard', function(){
   let dash_idx = config.dashboards.length;
@@ -986,6 +1031,13 @@ function updateChart(dash_idx, chart_idx){
         }
         if(sepWdg.includes('name')){
           ser.name = ser.sepVals[sepWdg.indexOf('name')];
+          if (!$.isEmptyObject(globalStyles)
+           && trace_config.name in globalStyles
+           && ser.name in globalStyles[trace_config.name]
+           && 'color' in globalStyles[trace_config.name][ser.name]){
+            updateObj(ser, ['marker','color'], globalStyles[trace_config.name][ser.name].color);
+            updateObj(ser, ['line','color'], globalStyles[trace_config.name][ser.name].color);
+          }
         } else{
           updateObj(ser, ['marker','color'], 'deepskyblue');
           updateObj(ser, ['line','color'], 'deepskyblue');
@@ -1183,6 +1235,8 @@ function load_config(){
   }
   config.fileNames = config_load.fileNames;
   //Configure all the charts like a user would, but do the required widgets last so the charts only get built once.
+  //First global styles
+  $('#global-style-file').val(config_load.globalStyleFile).change();
   config_load.dashboards.forEach((db, di) => {
     $('.add-dashboard').click();
     db.charts.forEach((cht, ci) => {
