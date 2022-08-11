@@ -667,7 +667,11 @@ $('#report').on('change','.trace-ind-controls > select', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
   let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  trace_config[$(this).attr('data-config')] = $(this).val();
+  if($(this).val() == 'none'){
+    delete trace_config[$(this).attr('data-config')]
+  } else{
+    trace_config[$(this).attr('data-config')] = $(this).val();
+  }
   if('type' in trace_config && trace_config.type != 'none' &&
     chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
     chartTypes[trace_config.type].required.every((val) => val != 'none')
