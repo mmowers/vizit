@@ -1018,13 +1018,13 @@ function updateChart(dash_idx, chart_idx){
         if('x' in trace_config){
           plotlyLayout[layoutXaxis] = {
             automargin: true,
-            title: `<br>${trace_config.x}${colLabel}`,
+            title: {text: `<br>${trace_config.x}${colLabel}`},
           };
         }
         if('y' in trace_config){
           plotlyLayout[layoutYaxis] = {
             automargin: true,
-            title: `${rowLabel}${trace_config.y}<br>`,
+            title: {text: `${rowLabel}${trace_config.y}<br>`},
           };
         }
         if('marker_size' in trace_config){
