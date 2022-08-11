@@ -1211,8 +1211,10 @@ function indexOfArr(arr, subarr){
 $('#download-html').click(function(){
   var stringifiedConfig = JSON.stringify(config);
   var stringifiedRawData = JSON.stringify(rawData);
+  var stringifiedGlobalStyles = JSON.stringify(globalStyles);
   let html_str = orig_html_str.replace(/let config_load = .*;/,`let config_load = ${stringifiedConfig};`)
   html_str = html_str.replace(/const rawData = .*;/,`const rawData = ${stringifiedRawData};`)
+  html_str = html_str.replace(/let globalStyles = .*;/,`let globalStyles = ${stringifiedGlobalStyles};`)
   let content = "data:text/html;charset=utf-8," + encodeURIComponent(html_str);
   const link = document.createElement("a");
   link.setAttribute("href", content);
@@ -1238,8 +1240,10 @@ function load_config(){
   }
   config.fileNames = config_load.fileNames;
   //Configure all the charts like a user would, but do the required widgets last so the charts only get built once.
-  //First global styles
-  $('#global-style-file').val(config_load.globalStyleFile).change();
+  //First global styles, but ensure we have the file options loaded (downloaded htmls will not, but globalStyles will be set already)
+  if($('#global-style-file option').length > 1){
+    $('#global-style-file').val(config_load.globalStyleFile).change();
+  }
   config_load.dashboards.forEach((db, di) => {
     $('.add-dashboard').click();
     db.charts.forEach((cht, ci) => {
