@@ -45,7 +45,6 @@ select{
 }
 .chart-controls,
 .filter-div,
-.style-div,
 #global-config{
   border: 1px solid lightgray;
 }
@@ -534,6 +533,9 @@ $('#report').on('click','.add-chart', function(){
   for (const key in customStyle.layout){
     styleOptionsHTML += `<option value="${key}">${key}</option>`;
   }
+  for (const key in customStyle.data){
+    styleOptionsHTML += `<option value="${key}">${key}</option>`;
+  }
   //Build html
   let html = `
     <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-outer">
@@ -655,18 +657,6 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
       <button class="update-filter">Update Filters</button>
     </div>
   `;
-  //Add custom styling
-  let styleOptionsHTML = `<option value="none">Add Style</option>`;
-  for (const key in customStyle.data){
-    styleOptionsHTML += `<option value="${key}">${key}</option>`;
-  }
-  wdgHtml += `
-    <div class="style-div">
-      <label class="styles-label">Change Data Style</label>
-      <select class="add-style">${styleOptionsHTML}</select>
-      <button class="update-style">Update Styles</button>
-    </div>
-  `;
 
   let html = `<div class="trace-ind-controls">${wdgHtml}</div>`;
   thisTraceDiv.append(html);
@@ -779,22 +769,6 @@ $('#report').on('change','.add-style', function(){
   `;
   $(this).before(html);
   $(this).val('none');
-});
-
-$('#report').on('click','.style-div .update-style', function(){
-  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
-  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  //Build style config
-  trace_config.style={};
-  $(this).siblings('.style-outer').each(function(){
-    trace_config.style[$(this).children('label').text()] = $(this).children('input').val();
-  });
-  if('type' in trace_config && trace_config.type != 'none' &&
-    chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
-    chartTypes[trace_config.type].required.every((val) => val != 'none')
-  ){
-    updateChart(dash_idx, chart_idx);
-  }
 });
 
 $('#report').on('click','.chartstyle-div .update-style', function(){
@@ -1063,21 +1037,33 @@ function updateChart(dash_idx, chart_idx){
           ser[prop] = chartType['attr'][prop];
         }
         //Add custom styling that applies to data (must be added to each series, even though this is inefficient...)
-        if('style' in trace_config){
-          for(const prop in trace_config['style']){
-            updateObj(ser, customStyle.data[prop].path, trace_config['style'][prop]);
+        if('style' in chart_config){
+          for(const prop in chart_config['style']){
+            let propVal = chart_config['style'][prop];
+            if(prop in customStyle.data){
+              updateObj(ser, customStyle.data[prop].path, propVal);
+            } else if(prop in customStyle.layout){
+              let propPath = [...customStyle.layout[prop].path]; //this uses spread operator to make shallow copy
+              if(propPath[0] == 'xaxis'){
+                propPath[0] = layoutXaxis;
+                if(propPath[1] == 'title' && propPath[2] == 'text'){
+                  propVal = `<br>${propVal}${colLabel}`;
+                }
+              }else if(propPath[0] == 'yaxis'){
+                propPath[0] = layoutYaxis;
+                if(propPath[1] == 'title' && propPath[2] == 'text'){
+                  propVal = `${rowLabel}${propVal}<br>`;
+                }
+              }
+              updateObj(plotlyLayout, propPath, propVal);
+            }
           }
         }
         //Todo: Size needs to be within marker{}
         plotlyData.push(ser);
       }
     }
-    //Add custom styling that applies to layout.
-    if('style' in chart_config){
-      for(const prop in chart_config['style']){
-        updateObj(plotlyLayout, customStyle.layout[prop].path, chart_config['style'][prop]);
-      }
-    }
+
     Plotly.react(`chart-dash-${dash_idx}-chart-${chart_idx}`, plotlyData, plotlyLayout, defaultPlotlyConfig);
     // window.dispatchEvent(new Event('resize')); //This works but maybe we should just be using plotly width and height...
   } else if(chartTypes[chart_config.traces[0].type].engine == 'google'){
