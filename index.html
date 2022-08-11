@@ -134,6 +134,11 @@ const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetica
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: [{x:[], y:[], sepDims:[],...},...]}.
 let globalStyles = {}; //e.g. {col_name_1: {col_val_1: {color: '', order:''}}}
+let globalColors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
+          '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5', '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5'];
+for(let i = 0; i < 10; i++){
+  globalColors = globalColors.concat(globalColors); //This doubles globalColors each time.
+}
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
 let plotlySchema = Plotly.PlotSchema.get() //I found this on a forum: https://community.plotly.com/t/plotly-json-schema-reference/21261
 // Plotly reference links:
@@ -1040,10 +1045,13 @@ function updateChart(dash_idx, chart_idx){
            && 'color' in globalStyles[trace_config.name][ser.name]){
             updateObj(ser, ['marker','color'], globalStyles[trace_config.name][ser.name].color);
             updateObj(ser, ['line','color'], globalStyles[trace_config.name][ser.name].color);
+          } else{
+            updateObj(ser, ['marker','color'], globalColors[sepWdgUniques.name.indexOf(ser.name)]);
+            updateObj(ser, ['line','color'], globalColors[sepWdgUniques.name.indexOf(ser.name)]);
           }
         } else{
-          updateObj(ser, ['marker','color'], 'deepskyblue');
-          updateObj(ser, ['line','color'], 'deepskyblue');
+          updateObj(ser, ['marker','color'], globalColors[0]);
+          updateObj(ser, ['line','color'], globalColors[0]);
         }
         ser.legendgroup = ser.name;
         if(seriesVals.includes(ser.name)){
