@@ -104,6 +104,8 @@ text.js-plot-link-container{
 <label for="file-input">Data sources / config:</label><br>
 <input type="file" id="file-input" name="file-input" multiple="multiple">
 <ul id="file-list">(no files selected)</ul>
+<input id="url-input" type="text" placeholder="URL to csv">
+<button id="add-url-input">Load</button>
 <div id="global-config-header">Global Config</div>
 <div id="global-config">
   Styling file:
@@ -451,7 +453,12 @@ $('#file-input').change(function(evt){
       const numFiles = config_load.fileNames.length;
       let countFile = 0;
       for(const fileName of config_load.fileNames){
-        if(!(fileName in rawData)){
+        if(fileName in rawData){
+          countFile++;
+          if(countFile >= numFiles){
+            load_config();
+          }
+        } else {
           Papa.parse(files[fileName], {
             worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
             header: false,
@@ -511,6 +518,23 @@ function updateGlobalStyles(data){
     updateObj(globalStyles, [data.column_name[i], data.column_value[i], 'order'], i);
   }
 }
+
+$('#add-url-input').click(function(){
+  let filePath = $('#url-input').val();
+  let fileName = filePath.split('/').pop();
+  config.fileNames.push(fileName);
+  $('#file-list').append(`<li>${fileName}</li>`);
+  Papa.parse(filePath, {
+    worker: true,
+    header: false,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+    download: true,
+    complete: function(results) {
+      rawData[fileName] = transpose_to_obj(results.data);
+    }
+  });
+});
 
 $('#report').on('click','.add-dashboard', function(){
   let dash_idx = config.dashboards.length;
