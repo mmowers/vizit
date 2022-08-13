@@ -54,7 +54,8 @@ select{
 .filter-name,
 .trace-title,
 #download-html,
-#download-json{
+#download-json,
+#config-url{
   color: #0088cc;
   cursor: pointer;
 }
@@ -100,7 +101,7 @@ text.js-plot-link-container{
 <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
 </head>
 <body>
-<a style="position: absolute; top: 10px; right: 20px; z-index:100;" href="http://github.com/mmowers/vizit" target="_blank">Vizit GitHub</a>
+<a style="position: absolute; top: 10px; right: 20px; z-index:100;" href="https://github.com/mmowers/vizit" target="_blank">Vizit GitHub</a>
 <label for="file-input">Data sources / config:</label><br>
 <input type="file" id="file-input" name="file-input" multiple="multiple">
 <ul id="file-list">(no files selected)</ul>
@@ -125,6 +126,7 @@ text.js-plot-link-container{
 </div>
 <div><span id="download-html">Download HTML</span></div>
 <div><span id="download-json">Download config JSON</span></div>
+<div><span id="config-url">Open config URL</span></div>
 
 <script>
 'use strict';
@@ -1253,6 +1255,9 @@ $('#download-json').click(function(){
   link.click();
   document.body.removeChild(link);
 });
+$('#config-url').click(function(){
+  window.open(`https://mmowers.github.io/vizit?config=${encodeURIComponent(JSON.stringify(config))}`, "_blank");
+});
 
 //Function to import specified configurations.
 function load_config(){
@@ -1327,8 +1332,35 @@ function load_config(){
     });
   });
 }
-//Load configuration if it exists
-$(document).ready(load_config);
+
+//If we have config in the url, retrieve the datasources and set config_load
+const urlSearchParams = new URLSearchParams(window.location.search);
+const params = Object.fromEntries(urlSearchParams.entries());
+if('config' in params){
+  config_load = JSON.parse(params.config); //what about decodeURIComponent()? I think it's already decoded.
+  //Load all datasources first
+  const numFiles = config_load.fileNames.length;
+  let countFile = 0;
+  for(let fileName of config_load.fileNames){
+    Papa.parse(fileName, {
+      worker: true,
+      header: false,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      download: true,
+      complete: function(results) {
+        rawData[fileName] = transpose_to_obj(results.data);
+        countFile++;
+        if(countFile >= numFiles){
+          $(document).ready(load_config);
+        }
+      }
+    });
+  }
+} else{
+  //Load config_load if it exists, e.g. if embedded in html via #download-html
+  $(document).ready(load_config);
+}
 
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly" async></script>
