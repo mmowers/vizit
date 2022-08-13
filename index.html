@@ -521,9 +521,8 @@ function updateGlobalStyles(data){
 
 $('#add-url-input').click(function(){
   let filePath = $('#url-input').val();
-  let fileName = filePath.split('/').pop();
-  config.fileNames.push(fileName);
-  $('#file-list').append(`<li>${fileName}</li>`);
+  config.fileNames.push(filePath);
+  $('#file-list').append(`<li>${filePath}</li>`);
   Papa.parse(filePath, {
     worker: true,
     header: false,
@@ -531,7 +530,7 @@ $('#add-url-input').click(function(){
     skipEmptyLines: true,
     download: true,
     complete: function(results) {
-      rawData[fileName] = transpose_to_obj(results.data);
+      rawData[filePath] = transpose_to_obj(results.data);
     }
   });
 });
