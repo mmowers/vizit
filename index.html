@@ -243,7 +243,7 @@ const chartTypes = {
       width: 700,
       height: 400,
       dragmode: 'zoom',
-      mapbox: {style: 'open-street-map', center: { lat: 38, lon: -95 }, zoom: 3 },
+      mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
     }
   },
   'lat/lon/area plotly map':{
@@ -261,7 +261,7 @@ const chartTypes = {
       width: 700,
       height: 400,
       dragmode: 'zoom',
-      mapbox: { style: 'open-street-map', center: { lat: 38, lon: -95 }, zoom: 3 },
+      mapbox: { style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
       showlegend: true,
     }
   },
@@ -366,6 +366,10 @@ const customStyle = {
     },
     'Y-axis Title': {
       path: ['yaxis','title','text'],
+    },
+    'Map Style': {
+      path: ['mapbox','style'],
+      tooltip: 'See https://plotly.com/javascript/reference/layout/mapbox/#layout-mapbox-style',
     },
     'Map Zoom': {
       path: ['mapbox','zoom'],
@@ -817,6 +821,7 @@ $('#report').on('change','.add-style', function(){
     <div class="style-outer">
       <label class="style-name">${$(this).val()}</label>
       <input type="text">
+      <span class="tooltip-parent">?<span class="tooltip"></span></span>
     </div>
   `;
   $(this).before(html);
@@ -988,8 +993,8 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
   }
 }
 function updateChart(dash_idx, chart_idx){
-  const chart_config = config.dashboards[dash_idx].charts[chart_idx];
-  const chart_data = traceData[dash_idx][chart_idx];
+  const chart_config = JSON.parse(JSON.stringify(config.dashboards[dash_idx].charts[chart_idx])); //Maybe structuredClone would be better...
+  const chart_data = JSON.parse(JSON.stringify(traceData[dash_idx][chart_idx]));
   if($(`#chart-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
     $(`#dash-${dash_idx}-chart-${chart_idx}`).prepend(`<div id="chart-dash-${dash_idx}-chart-${chart_idx}" class="chart"></div>`);
   }
