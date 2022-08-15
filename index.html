@@ -219,7 +219,7 @@ const chartTypes = {
   'US State plotly map':{
     engine:'plotly',
     attr: {
-      type: "choropleth",
+      type: 'choropleth',
       locationmode: 'USA-states',
     },
     wdgTypes: ['locations','z','text'],
@@ -233,22 +233,43 @@ const chartTypes = {
   'lat/lon plotly map':{
     engine:'plotly',
     attr: {
-      type: "scattermapbox",
+      type: 'scattermapbox',
     },
     wdgTypes: ['lat','lon','name','marker_size','text'],
     required:['lat','lon'],
     defaultAgg: 'none',
     aggCol: 'none',
     layout:{
-      dragmode: "zoom",
-      mapbox: { style: "open-street-map", center: { lat: 38, lon: -90 }, zoom: 3 },
+      width: 700,
+      height: 400,
+      dragmode: 'zoom',
+      mapbox: {style: 'open-street-map', center: { lat: 38, lon: -95 }, zoom: 3 },
     }
   },
-  'lat/lng/size google map':{
-    wdgTypes: ['lat','lng','size','name'],
-    required:['lat','lng','size'],
+  'lat/lon/area plotly map':{
+    engine:'plotly',
+    attr: {
+      type: 'scattermapbox',
+      fill: 'toself',
+      mode: 'none',
+    },
+    wdgTypes: ['lat','lon','name','area','text'],
+    required:['lat','lon','area'],
     defaultAgg: 'none',
-    aggCol: 'size',
+    aggCol: 'area',
+    layout:{
+      width: 700,
+      height: 400,
+      dragmode: 'zoom',
+      mapbox: { style: 'open-street-map', center: { lat: 38, lon: -95 }, zoom: 3 },
+      showlegend: true,
+    }
+  },
+  'lat/lng/radius google map':{
+    wdgTypes: ['lat','lng','radius','name'],
+    required:['lat','lng','radius'],
+    defaultAgg: 'none',
+    aggCol: 'none',
     engine:'google',
   },
 };
@@ -269,7 +290,8 @@ const wdgTypes = {
   name: 'Color',
   locations: 'State Codes',
   text: 'Hover Text',
-  size: 'Size',
+  radius: 'Radius (m)',
+  area: 'Area (sq_km)',
   marker_size: 'Marker Size',
   lat: 'Latitude',
   lng: 'Longitude',
@@ -304,6 +326,7 @@ const defaultPlotlyLayout = { //See https://plotly.com/javascript/reference/layo
   },
   legend: {
     tracegroupgap: 0,
+    itemsizing: 'constant',
   },
   annotations:[],
 };
@@ -1093,6 +1116,10 @@ function updateChart(dash_idx, chart_idx){
       }
     }
 
+    //Update html element width and height
+    $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).width(plotlyLayout.width);
+    $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).height(plotlyLayout.height);
+
     Plotly.react(`chart-dash-${dash_idx}-chart-${chart_idx}`, plotlyData, plotlyLayout, defaultPlotlyConfig);
     // window.dispatchEvent(new Event('resize')); //This works but maybe we should just be using plotly width and height...
   } else if(chartTypes[chart_config.traces[0].type].engine == 'google'){
@@ -1117,21 +1144,20 @@ function updateChart(dash_idx, chart_idx){
             // fillOpacity: -1/2000*thisMetric + 1, //y=mx + b, where y is opacity, from 0 to 1.
             map:gMap,
             center: {lat: ser['lat'][j], lng: ser['lng'][j]},
-            radius: ser['size'][j],
+            radius: ser['radius'][j],
             // customText: 'Reduced Cost: ' + thisMetric + ' $/kW',
           });
           // google.maps.event.addListener(mapCircle, 'click', gmCircleListener);
         }
       }
     }
-  }
-  //Common chart styling
-  if('style' in chart_config){
-    if('Plot Width (px)' in chart_config.style){
-      $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).width(chart_config.style['Plot Width (px)']);
-    }
-    if('Plot Height (px)' in chart_config.style){
-      $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).height(chart_config.style['Plot Height (px)']);
+    if('style' in chart_config){
+      if('Plot Width (px)' in chart_config.style){
+        $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).width(chart_config.style['Plot Width (px)']);
+      }
+      if('Plot Height (px)' in chart_config.style){
+        $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).height(chart_config.style['Plot Height (px)']);
+      }
     }
   }
 }
