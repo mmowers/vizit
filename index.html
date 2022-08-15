@@ -1040,12 +1040,12 @@ function updateChart(dash_idx, chart_idx){
           }
           for(let i = 0; i < ser.lat.length; i++){
             const bb = getBoundingBox(ser.lat[i], ser.lon[i], ser.area[i]**0.5/2);
-            new_ser.lat.push(bb.lat_max, bb.lat_min, bb.lat_min, bb.lat_max, bb.lat_max, null);
-            new_ser.lon.push(bb.lon_min, bb.lon_min, bb.lon_max, bb.lon_max, bb.lon_min, null);
+            new_ser.lat.push(ser.lat[i], null, bb.lat_max, bb.lat_min, bb.lat_min, bb.lat_max, bb.lat_max, null);
+            new_ser.lon.push(ser.lon[i], null, bb.lon_min, bb.lon_min, bb.lon_max, bb.lon_max, bb.lon_min, null);
             //for all other properties, simply copy values.
             for(const prop of nonLatLons){
               const serProp = ser[prop][i];
-              new_ser[prop].push(serProp, serProp, serProp, serProp, serProp, null);
+              new_ser[prop].push(serProp, null, serProp, serProp, serProp, serProp, serProp, null);
             }
           }
           for(const prop in new_ser){
