@@ -253,7 +253,7 @@ const chartTypes = {
       fill: 'toself',
       mode: 'none',
     },
-    wdgTypes: ['lat','lon','name','area','text'],
+    wdgTypes: ['lat','lon','area','name','text'],
     required:['lat','lon','area'],
     defaultAgg: 'none',
     aggCol: 'area',
@@ -1018,8 +1018,35 @@ function updateChart(dash_idx, chart_idx){
         plotlyLayout.grid.columns = sepWdg.includes('col') ? sepWdgUniques['col'].length : 1;
       }
       //Add the plotly traces (what we call "subtraces")
-      let seriesVals = []; //As we go, we'll add unique elements to seriesVals, and if they exist, showLegend will be false.
+      let seriesVals = []; //As we go, we'll add unique elements to seriesVals, and if they already exist, showLegend will be false.
       for(const [j, ser] of subtrace_data.entries()){
+        if(trace_config.type == 'lat/lon/area plotly map'){
+          //If this is a lat/lon/area plotly map, we need to find the bounding box and draw it.
+          //This expands the lat and lon arrays, and we'll also expand the other arrays to match.
+          const new_ser = {};
+          const nonLatLons = [];
+          for(const prop in ser){
+            if(chartType.wdgTypes.includes(prop)){
+              new_ser[prop] = [];
+              if(prop != 'lat' && prop != 'lon'){
+                nonLatLons.push(prop);
+              }
+            }
+          }
+          for(let i = 0; i < ser.lat.length; i++){
+            const bb = getBoundingBox(ser.lat[i], ser.lon[i], ser.area[i]**0.5/2);
+            new_ser.lat.push(bb.lat_max, bb.lat_min, bb.lat_min, bb.lat_max, bb.lat_max, null);
+            new_ser.lon.push(bb.lon_min, bb.lon_min, bb.lon_max, bb.lon_max, bb.lon_min, null);
+            //for all other properties, simply copy values.
+            for(const prop of nonLatLons){
+              const serProp = ser[prop][i];
+              new_ser[prop].push(serProp, serProp, serProp, serProp, serProp, null);
+            }
+          }
+          for(const prop in new_ser){
+            ser[prop] = new_ser[prop];
+          }
+        }
         let xaxis = 'x'; //These are defaults that can change below if we have rows/columns
         let yaxis = 'y'; //These are defaults that can change below if we have rows/columns
         let layoutXaxis = 'xaxis';
@@ -1256,6 +1283,31 @@ function indexOfArr(arr, subarr){
     }
   }
   return -1;
+}
+
+//The following is from GeoPoint.prototype.boundingCoordinates of https://github.com/davidwood/node-geopoint/blob/master/geopoint.js,
+//which is based on http://janmatuschek.de/LatitudeLongitudeBoundingCoordinates, which i found referenced at:
+//https://stackoverflow.com/questions/238260/how-to-calculate-the-bounding-box-for-a-given-lat-lng-location
+function getBoundingBox(lat_deg, lon_deg, dist_km){
+  const DEG2RAD = Math.PI / 180;
+  const RAD2DEG = 1 / DEG2RAD;
+  const EARTH_RADIUS_KM = 6371.01;
+
+  const lat_rad = lat_deg * DEG2RAD;
+  const lon_rad = lon_deg * DEG2RAD;
+  const radDist = dist_km / EARTH_RADIUS_KM;
+  const min_lat_rad = lat_rad - radDist;
+  const max_lat_rad = lat_rad + radDist;
+  const deltaLon = Math.asin(Math.sin(radDist) / Math.cos(lat_rad));
+  const min_lon_rad = lon_rad - deltaLon;
+  const max_lon_rad = lon_rad + deltaLon;
+
+  return {
+    lat_min: min_lat_rad * RAD2DEG,
+    lat_max: max_lat_rad * RAD2DEG,
+    lon_min: min_lon_rad * RAD2DEG,
+    lon_max: max_lon_rad * RAD2DEG,
+  };
 }
 $('#download-html').click(function(){
   var stringifiedConfig = JSON.stringify(config);
