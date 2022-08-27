@@ -397,39 +397,27 @@ const customStyle = {
   },
 };
 
-/*Bokehpivot default styling
+/*Bokehpivot default styling not yet included
 For Plots::
-Plot Width (px): 300
-Plot Height (px): 300
-Plot Title:
-Plot Title Font Size: 10
 Opacity (0-1): 0.8
 Sync Axes: Yes
 Flip Axes: No
 X Scale: 1
 X Min:
 X Max:
-X Title:
 X Title Font Size: 10
 X Labels Font Size: 8
-X Labels Degrees: 45
 Y Scale: 1
 Y Min:
 Y Max:
-Y Title:
 Y Title Font Size: 10
 Y Labels Font Size: 8
-Circle Size (Dot Only): 9
-Bar Width (Bar Only): 0.8 (looks like we can set 'width' on the top level of the trace)
 Sort Data: Yes
 Cumulative Sort: None
 Histogram # of bins: 20
 Weighted Histogram: Yes
-Line Width (Line Only): 2
 Show Line/Dot (Range Only): Yes
 Add Net Levels to Stacked: Yes
-Show Bokeh Tools: Yes
-Custom Styles CSV:
 
 For Maps::
 Bin Type: Auto Equal Num
@@ -453,68 +441,47 @@ Arrow Location (0=start, 1=end): 0.8
 
 $('#file-input').change(function(evt){
   let newFiles = Array.from(evt.target.files);
+  //Load all the files asynchronously
   for(let i = 0; i < newFiles.length; i++){
     //If the file already exists, remove the old version
     if(newFiles[i].name in files){
+      $(`#file-list li[data-name="${newFiles[i].name}"]`).remove();
       delete files[newFiles[i].name];
     }
-    //If this is a json file, we will save it in config_load_json_file.
+    //If this is a json file, we will save it in config_load_json_file and load
     if(newFiles[i].name.endsWith('.json')){
-      config_load_json_file = newFiles[i];
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        config_load = JSON.parse(evt.target.result);
+        $('#file-list').append(
+          `<li data-name="${newFiles[i].name}">${newFiles[i].name}
+            (requires <b>${config_load.fileNames.join(', ')}</b>)</li>`
+        );
+        config_load_json_file = newFiles[i];
+        if(config_load.fileNames.every(val => val in rawData)) load_config();
+      }
+      reader.readAsText(newFiles[i]);
     } else{
-    //Else add the new file to the files object
+    //Else add the new file to the files object and load
       files[newFiles[i].name] = newFiles[i];
-    }
-  }
-  //Show files in html, sorted alphabetically
-  $('#file-list').empty();
-  config.fileNames = Object.keys(files).sort();
-  for(let fileName of config.fileNames){
-    $('#file-list').append(`<li>${fileName}</li>`);
-  }
-
-  //Update global style file selector options
-  //TODO: Keep selected options when new files are added. Right now it resets to none.
-  //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
-  let optionsHtml = `<option value="none">none</option>`;
-  for(let fileName of config.fileNames){
-    optionsHtml += `<option value="${fileName}">${fileName}</option>`;
-  }
-  $('.standard-file-select').html(optionsHtml);
-
-  //If we have config from a json file, check to make sure all the needed files are in the files object and,
-  //if so, call load_config. Otherwise, list the files that are still needed
-  if(config_load_json_file != null){
-    //maybe a little overkill to read in every time, but the config file can get updated so good for that.
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      config_load = JSON.parse(evt.target.result);
-      const numFiles = config_load.fileNames.length;
-      let countFile = 0;
-      for(const fileName of config_load.fileNames){
-        if(fileName in rawData){
-          countFile++;
-          if(countFile >= numFiles){
+      if(!config.fileNames.includes(newFiles[i].name)) config.fileNames.push(newFiles[i].name);
+      config.fileNames.sort();
+      Papa.parse(newFiles[i], {
+        worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
+        header: false,
+        dynamicTyping: true,
+        skipEmptyLines: true,
+        complete: function(results, file) {
+          rawData[newFiles[i].name] = transpose_to_obj(results.data);
+          $('#file-list').append(`<li data-name="${newFiles[i].name}">${newFiles[i].name}</li>`);
+          //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
+          $('.standard-file-select').append(`<option value="${newFiles[i].name}">${newFiles[i].name}</option>`); //what if we already have this?
+          if(config_load_json_file != null && config_load.fileNames.every(val => val in rawData)){
             load_config();
           }
-        } else {
-          Papa.parse(files[fileName], {
-            worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
-            header: false,
-            dynamicTyping: true,
-            skipEmptyLines: true,
-            complete: function(results, file) {
-              rawData[fileName] = transpose_to_obj(results.data);
-              countFile++;
-              if(countFile >= numFiles){
-                load_config();
-              }
-            }
-          });
         }
-      }
-    };
-    reader.readAsText(config_load_json_file);
+      });
+    }
   }
 });
 
@@ -525,21 +492,7 @@ $('#global-config-header').click(function(){
 $('#global-style-file').change(function(){
   let selectFile = $(this).val();
   config.globalStyleFile = selectFile;
-  //If we haven't already gotten the file, grab the data.
-  if(!(selectFile in rawData)){
-    Papa.parse(files[selectFile], {
-      worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
-      header: false,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      complete: function(results, file) {
-        rawData[selectFile] = transpose_to_obj(results.data);
-        updateGlobalStyles(rawData[selectFile]);
-      }
-    });
-  } else{
-    updateGlobalStyles(rawData[selectFile]);
-  }
+  updateGlobalStyles(rawData[selectFile]);
 });
 
 function updateGlobalStyles(data){
@@ -562,6 +515,11 @@ $('#add-url-input').click(function(){
     download: true,
     complete: function(results) {
       rawData[filePath] = transpose_to_obj(results.data);
+      $('#file-list').append(`<li data-name="${newFiles[i].name}">${newFiles[i].name}</li>`);
+      $('.standard-file-select').append(`<option value="${newFiles[i].name}">${newFiles[i].name}</option>`);
+      if(config_load_json_file != null && config_load.fileNames.every(val => val in rawData)){
+        load_config();
+      }
     }
   });
 });
@@ -644,25 +602,9 @@ $('#report').on('change','.data-source', function(){
   <label>Chart Type:</label>
   <select data-config="type">${chartTypeHtml}</select>
   `;
-  //If we haven't already gotten the file, grab the data.
-  if(!(selectFile in rawData)){
-    Papa.parse(files[selectFile], {
-      worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
-      header: false,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      complete: function(results, file) {
-        rawData[selectFile] = transpose_to_obj(results.data);
-        thisTraceData.filteredData = rawData[selectFile];
-        thisTraceData.aggData = rawData[selectFile];
-        thisDS.after(html);
-      }
-    });
-  }else{
-    thisTraceData.filteredData = rawData[selectFile];
-    thisTraceData.aggData = rawData[selectFile];
-    thisDS.after(html);
-  }
+  thisTraceData.filteredData = rawData[selectFile];
+  thisTraceData.aggData = rawData[selectFile];
+  thisDS.after(html);
 });
 
 $('#report').on('change','select[data-config="type"]', function(){
@@ -1424,8 +1366,6 @@ const params = Object.fromEntries(urlSearchParams.entries());
 if('config' in params){
   config_load = JSON.parse(params.config); //what about decodeURIComponent()? I think it's already decoded.
   //Load all datasources first
-  const numFiles = config_load.fileNames.length;
-  let countFile = 0;
   for(let fileName of config_load.fileNames){
     Papa.parse(fileName, {
       worker: true,
@@ -1435,10 +1375,7 @@ if('config' in params){
       download: true,
       complete: function(results) {
         rawData[fileName] = transpose_to_obj(results.data);
-        countFile++;
-        if(countFile >= numFiles){
-          $(document).ready(load_config);
-        }
+        if(config_load.fileNames.every(val => val in rawData)) $(document).ready(load_config);
       }
     });
   }
