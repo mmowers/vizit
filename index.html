@@ -504,9 +504,9 @@ function updateGlobalStyles(data){
 }
 
 $('#add-url-input').click(function(){
+  //TODO: We should share code with file input I think.
   let filePath = $('#url-input').val();
   config.fileNames.push(filePath);
-  $('#file-list').append(`<li>${filePath}</li>`);
   Papa.parse(filePath, {
     worker: true,
     header: false,
@@ -515,8 +515,8 @@ $('#add-url-input').click(function(){
     download: true,
     complete: function(results) {
       rawData[filePath] = transpose_to_obj(results.data);
-      $('#file-list').append(`<li data-name="${newFiles[i].name}">${newFiles[i].name}</li>`);
-      $('.standard-file-select').append(`<option value="${newFiles[i].name}">${newFiles[i].name}</option>`);
+      $('#file-list').append(`<li data-name="${filePath}">${filePath}</li>`);
+      $('.standard-file-select').append(`<option value="${filePath}">${filePath}</option>`);
       if(config_load_json_file != null && config_load.fileNames.every(val => val in rawData)){
         load_config();
       }
