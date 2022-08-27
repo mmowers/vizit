@@ -472,6 +472,16 @@ $('#file-input').change(function(evt){
   for(let fileName of config.fileNames){
     $('#file-list').append(`<li>${fileName}</li>`);
   }
+
+  //Update global style file selector options
+  //TODO: Keep selected options when new files are added. Right now it resets to none.
+  //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
+  let optionsHtml = `<option value="none">none</option>`;
+  for(let fileName of config.fileNames){
+    optionsHtml += `<option value="${fileName}">${fileName}</option>`;
+  }
+  $('.standard-file-select').html(optionsHtml);
+
   //If we have config from a json file, check to make sure all the needed files are in the files object and,
   //if so, call load_config. Otherwise, list the files that are still needed
   if(config_load_json_file != null){
@@ -506,14 +516,6 @@ $('#file-input').change(function(evt){
     };
     reader.readAsText(config_load_json_file);
   }
-  //Update global style file selector options
-  //TODO: Keep selected options when new files are added. Right now it resets to none.
-  //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
-  let optionsHtml = `<option value="none">none</option>`;
-  for(let fileName of config.fileNames){
-    optionsHtml += `<option value="${fileName}">${fileName}</option>`;
-  }
-  $('.standard-file-select').html(optionsHtml);
 });
 
 $('#global-config-header').click(function(){
