@@ -66,8 +66,11 @@ select{
 #global-config{
   display: none;
 }
-#global-style-file{
+#global-style-file, #add-global-filter{
   display: inline-block;
+}
+#update-global-filter{
+  display: block;
 }
 text.js-plot-link-container{
   display:none;
@@ -107,21 +110,28 @@ text.js-plot-link-container{
 <ul id="file-list">(no files selected)</ul>
 <input id="url-input" type="text" placeholder="URL to csv">
 <button id="add-url-input">Load</button>
-<div id="global-config-header">Global Config</div>
-<div id="global-config">
-  Styling file:
-  <select id="global-style-file" class="standard-file-select">
-    <option value="none">none</option>
-  </select>
-  <span class="tooltip-parent">
-    ?
-    <span class="tooltip">
-      This file must have three columns named 'column_name', 'column_value', and 'color'. The order
-      of the rows will determine the order of display.
-    </span>
-  </span>
-  </div>
 <div id="report">
+  <div id="global-config-header">Global Config</div>
+  <div id="global-config">
+    <div id="global-style-config">
+      Styling file:
+      <select id="global-style-file" class="standard-file-select">
+        <option value="none">none</option>
+      </select>
+      <span class="tooltip-parent">
+        ?
+        <span class="tooltip">
+          This file must have three columns named 'column_name', 'column_value', and 'color'. The order
+          of the rows will determine the order of display.
+        </span>
+      </span>
+    </div>
+    <div id="global-filter-config">
+      Add Filters:
+      <select id="add-global-filter"><option value="none">Add Filter</option></select>
+      <button id="update-global-filter">Update Filters</button>
+    </div>
+  </div>
   <button class="add-dashboard">Add Dashboard</button>
 </div>
 <div><span id="download-html">Download HTML</span></div>
@@ -143,7 +153,7 @@ for(let i = 0; i < 10; i++){
   globalColors = globalColors.concat(globalColors); //This doubles globalColors each time.
 }
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
-let plotlySchema = Plotly.PlotSchema.get() //I found this on a forum: https://community.plotly.com/t/plotly-json-schema-reference/21261
+let plotlySchema = Plotly.PlotSchema.get(); //I found this on a forum: https://community.plotly.com/t/plotly-json-schema-reference/21261
 // Plotly reference links:
 // Single page figure reference: https://plotly.com/javascript/reference/ (this has the schema info as well)
 // Function reference: https://plotly.com/javascript/plotlyjs-function-reference (including image download, another resource is: https://plotly.com/javascript/static-image-export/)
@@ -473,6 +483,7 @@ $('#file-input').change(function(evt){
         skipEmptyLines: true,
         complete: function(results, file) {
           rawData[newFiles[i].name] = transpose_to_obj(results.data);
+          updateGlobalFilters(newFiles[i].name);
           $('#file-list').append(`<li data-name="${newFiles[i].name}">${newFiles[i].name}</li>`);
           //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
           $('.standard-file-select').append(`<option value="${newFiles[i].name}">${newFiles[i].name}</option>`); //what if we already have this?
@@ -515,6 +526,7 @@ $('#add-url-input').click(function(){
     download: true,
     complete: function(results) {
       rawData[filePath] = transpose_to_obj(results.data);
+      updateGlobalFilters(filePath);
       $('#file-list').append(`<li data-name="${filePath}">${filePath}</li>`);
       $('.standard-file-select').append(`<option value="${filePath}">${filePath}</option>`);
       if(config_load_json_file != null && config_load.fileNames.every(val => val in rawData)){
@@ -602,8 +614,9 @@ $('#report').on('change','.data-source', function(){
   <label>Chart Type:</label>
   <select data-config="type">${chartTypeHtml}</select>
   `;
-  thisTraceData.filteredData = rawData[selectFile];
-  thisTraceData.aggData = rawData[selectFile];
+  //If we have global filters, apply them, else filteredData is rawData
+  thisTraceData.filteredData = 'filter' in config ? applyFilters(rawData[selectFile], config.filter) : rawData[selectFile];
+  thisTraceData.aggData = thisTraceData.filteredData;
   thisDS.after(html);
 });
 
@@ -686,16 +699,18 @@ $('#report').on('change','.trace-ind-controls > select', function(){
   }
 });
 
-$('#report').on('change','.add-filter', function(){
-  if($(this).val() == 'none'){
-    return;
+function updateGlobalFilters(newFile){
+  for (const col in rawData[newFile]){
+    if($(`#add-global-filter option[value="${col}"]`).length == 0){
+      $(`#add-global-filter`).append(`<option value="${col}">${col}</option>`);
+    }
   }
-  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
-  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  const uniques = [... new Set(rawData[trace_config.dataSource][$(this).val()])]; //maybe uniques should be evaluated and saved earlier...
+}
+
+function getFilterHTML(column, uniques){
   let html = `
     <div class="filter-outer">
-      <label class="filter-name">${$(this).val()}</label>
+      <label class="filter-name">${column}</label>
       <select class="include-exclude">
         <option value="include">Include Only</option>
         <option value="exclude">Exclude Only</option>
@@ -710,6 +725,35 @@ $('#report').on('change','.add-filter', function(){
     html += `<label><input type="checkbox" name="filter-val" value="${i}">${uniques[i]}</label><br>`;
   }
   html += `</div></div>`;
+  return html;
+}
+
+$('#add-global-filter').change(function(){
+  if($(this).val() == 'none'){
+    return;
+  }
+  //First concatenate all values from all rawData with this column,
+  //then find uniques
+  let uniques = [];
+  for (const fileName in rawData){
+    if($(this).val() in rawData[fileName]){
+      uniques = uniques.concat(rawData[fileName][$(this).val()])
+    }
+  }
+  uniques = [...new Set(uniques)];
+  let html = getFilterHTML($(this).val(), uniques);
+  $(this).before(html);
+  $(this).val('none');
+});
+
+$('#report').on('change','.add-filter', function(){
+  if($(this).val() == 'none'){
+    return;
+  }
+  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
+  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+  const uniques = [... new Set(rawData[trace_config.dataSource][$(this).val()])]; //maybe uniques should be evaluated and saved earlier...
+  let html = getFilterHTML($(this).val(), uniques);
   $(this).before(html);
   $(this).val('none');
 });
@@ -717,6 +761,51 @@ $('#report').on('change','.add-filter', function(){
 $('#report').on('click','.select-all, .select-none', function(){
   const all_bool = $(this).attr('class').includes('select-all');
   $(this).parent().next().find('input').prop('checked',all_bool);
+});
+
+$('#update-global-filter').click(function(){
+  //Build filter config
+  config.filter={};
+  $(this).siblings('.filter-outer').each(function(){
+    const vals = [];
+    $(this).children('.filter-vals').find('input:checked').each(function(){
+      let changedVal = $(this).parent().text();
+      if($.isNumeric(changedVal)){
+        changedVal = Number(changedVal);
+      }
+      vals.push(changedVal);
+    });
+    if (vals.length > 0){
+      config.filter[$(this).children('.filter-name').text()] = {'include_exclude':$(this).children('.include-exclude').val(), 'values':vals};
+    }
+  });
+  let trace_config, raw_data, thisTraceData, allFilters;
+  for (const [dash_idx, dash] of traceData.entries()) {
+    for (const [chart_idx, chart] of traceData[dash_idx].entries()) {
+      for (const [trace_idx, trace] of traceData[dash_idx][chart_idx].entries()) {
+        trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+        raw_data = rawData[trace_config.dataSource];
+        thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
+        allFilters = {...config.filter, ...trace_config.filter}; //start with global, then overwrite with trace
+        thisTraceData.filteredData = applyFilters(raw_data, allFilters);
+        thisTraceData.aggData = thisTraceData.filteredData;
+        if('type' in trace_config && trace_config.type != 'none' &&
+          chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
+          chartTypes[trace_config.type].required.every((val) => val != 'none')
+        ){
+          if('agg' in trace_config && trace_config.agg != 'none'){
+            const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
+            const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
+              wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
+              wdg => trace_config[wdg]);
+            thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col);
+          }
+          updateTraceData(dash_idx, chart_idx, trace_idx);
+          updateChart(dash_idx, chart_idx);
+        }
+      }
+    }
+  }
 });
 
 $('#report').on('click','.update-filter', function(){
@@ -739,7 +828,8 @@ $('#report').on('click','.update-filter', function(){
       trace_config.filter[$(this).children('.filter-name').text()] = {'include_exclude':$(this).children('.include-exclude').val(), 'values':vals};
     }
   });
-  thisTraceData.filteredData = applyFilters(raw_data, trace_config.filter);
+  let allFilters = {...config.filter, ...trace_config.filter}; //start with global, then overwrite with trace
+  thisTraceData.filteredData = applyFilters(raw_data, allFilters);
   thisTraceData.aggData = thisTraceData.filteredData;
   if('type' in trace_config && trace_config.type != 'none' &&
     chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
@@ -830,13 +920,18 @@ function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
   return data_out;
 }
 
-function applyFilters(data_in, filters = {}){
+function applyFilters(data_in, filters_in = {}){
   //data_in looks like {col1:[], col2:[],...}
-  //filters looks like {col1: {include_exclude: 'include', values:[]},...}
-  if($.isEmptyObject(filters)){
+  //filters_in looks like {col1: {include_exclude: 'include', values:[]},...}
+  if($.isEmptyObject(filters_in)){
     return data_in;
   }
-  //else (actual else not needed because of return statement)
+  //else (explicit else not needed because of return statement)
+  let filters = JSON.parse(JSON.stringify(filters_in)); //Make local copy so i don't change the original
+  //Only apply filters that reference columns in data_in
+  for(const col in filters_in){
+    if(!(col in data_in)) delete filters[col];
+  }
   const data_out = {};
   const cols_out = Object.keys(data_in); // before I had a columns=[] argument and const cols_out = (columns.length === 0) ? Object.keys(data_in) : columns;
   for(const col of cols_out){
@@ -1139,7 +1234,7 @@ function updateChart(dash_idx, chart_idx){
 }
 
 function updateObj(obj, keys, value){
-  //'obj' is an object, and 'keys' is a path of (nested) keys for which we are setting the 'value'.
+  //'obj' is an object, and 'keys' is an array specifying the path of (nested) keys for which we are setting the 'value'.
   keys.forEach(function (item, index) {
     //If this is the final item of path, set it to the value
     if(index == keys.length -1){
@@ -1293,10 +1388,24 @@ function load_config(){
   }
   config.fileNames = config_load.fileNames;
   //Configure all the charts like a user would, but do the required widgets last so the charts only get built once.
-  //First global styles, but ensure we have the file options loaded (downloaded htmls will not, but globalStyles will be set already)
-  if($('#global-style-file option').length > 1){
+  //First global styles
+  if('globalStyleFile' in config_load){
     $('#global-style-file').val(config_load.globalStyleFile).change();
   }
+  //Now global filters
+  if('filter' in config_load){
+    for (const key in config_load.filter){
+      $(`#add-global-filter`).val(key).change();
+      $(`#global-filter-config .include-exclude`).last().val(config_load.filter[key]['include_exclude']).change();
+      $(`#global-filter-config .filter-vals`).last().children('label').each(function(){
+        if(config_load.filter[key]['values'].map(String).includes($(this).text())){ //perhaps map to string in separate step for speed
+          $(this).children('input').prop( "checked", true );
+        }
+      });
+    }
+    $(`#update-global-filter`).click();
+  }
+  //Now all dashboard, chart, and trace config.
   config_load.dashboards.forEach((db, di) => {
     $('.add-dashboard').click();
     db.charts.forEach((cht, ci) => {
@@ -1375,13 +1484,23 @@ if('config' in params){
       download: true,
       complete: function(results) {
         rawData[fileName] = transpose_to_obj(results.data);
+        updateGlobalFilters(fileName);
+        $('#file-list').append(`<li data-name="${fileName}">${fileName}</li>`);
+        $('.standard-file-select').append(`<option value="${fileName}">${fileName}</option>`);
         if(config_load.fileNames.every(val => val in rawData)) $(document).ready(load_config);
       }
     });
   }
 } else{
   //Load config_load if it exists, e.g. if embedded in html via #download-html
-  $(document).ready(load_config);
+  if (config_load !== null) {
+    for(let fileName of config_load.fileNames){
+      updateGlobalFilters(fileName);
+      $('#file-list').append(`<li data-name="${fileName}">${fileName}</li>`);
+      $('.standard-file-select').append(`<option value="${fileName}">${fileName}</option>`);
+    }
+    $(document).ready(load_config);
+  }
 }
 
 </script>
