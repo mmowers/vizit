@@ -48,6 +48,7 @@ select{
 #global-config{
   border: 1px solid lightgray;
 }
+#data-sources-label,
 #global-config-header,
 .filters-label,
 .styles-label,
@@ -105,11 +106,13 @@ text.js-plot-link-container{
 </head>
 <body>
 <a style="position: absolute; top: 10px; right: 20px; z-index:100;" href="https://github.com/mmowers/vizit" target="_blank">Vizit GitHub</a>
-<label for="file-input">Data sources / config:</label><br>
-<input type="file" id="file-input" name="file-input" multiple="multiple">
-<ul id="file-list">(no files selected)</ul>
-<input id="url-input" type="text" placeholder="URL to csv">
-<button id="add-url-input">Load</button>
+<label id="data-sources-label">Data sources / config:</label><br>
+<div id="data-sources">
+  <input type="file" id="file-input" name="file-input" multiple="multiple">
+  <ul id="file-list">(no files selected)</ul>
+  <input id="url-input" type="text" placeholder="URL to csv">
+  <button id="add-url-input">Load</button>
+</div>
 <div id="report">
   <div id="global-config-header">Global Config</div>
   <div id="global-config">
@@ -498,6 +501,9 @@ $('#file-input').change(function(evt){
 
 $('#global-config-header').click(function(){
   $('#global-config').toggle();
+});
+$('#data-sources-label').click(function(){
+  $('#data-sources').toggle();
 });
 
 $('#global-style-file').change(function(){
