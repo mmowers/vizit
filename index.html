@@ -1359,7 +1359,6 @@ $('#download-html').click(function(){
   var stringifiedGlobalStyles = JSON.stringify(globalStyles);
   let html_str = orig_html_str.replace(/let config_load = .*;/,`let config_load = ${stringifiedConfig};`)
   html_str = html_str.replace(/const rawData = .*;/,`const rawData = ${stringifiedRawData};`)
-  html_str = html_str.replace(/let globalStyles = .*;/,`let globalStyles = ${stringifiedGlobalStyles};`)
   let content = "data:text/html;charset=utf-8," + encodeURIComponent(html_str);
   const link = document.createElement("a");
   link.setAttribute("href", content);
@@ -1484,6 +1483,7 @@ if('config' in params){
       download: true,
       complete: function(results) {
         rawData[fileName] = transpose_to_obj(results.data);
+        //Do we need below inside of the $(document).ready to prevent this html from showing up in orig_html_str?
         updateGlobalFilters(fileName);
         $('#file-list').append(`<li data-name="${fileName}">${fileName}</li>`);
         $('.standard-file-select').append(`<option value="${fileName}">${fileName}</option>`);
@@ -1494,12 +1494,14 @@ if('config' in params){
 } else{
   //Load config_load if it exists, e.g. if embedded in html via #download-html
   if (config_load !== null) {
-    for(let fileName of config_load.fileNames){
-      updateGlobalFilters(fileName);
-      $('#file-list').append(`<li data-name="${fileName}">${fileName}</li>`);
-      $('.standard-file-select').append(`<option value="${fileName}">${fileName}</option>`);
-    }
-    $(document).ready(load_config);
+    $(document).ready(function(){
+      for(let fileName of config_load.fileNames){
+        updateGlobalFilters(fileName);
+        $('#file-list').append(`<li data-name="${fileName}">${fileName}</li>`);
+        $('.standard-file-select').append(`<option value="${fileName}">${fileName}</option>`);
+      }
+      load_config();
+    });
   }
 }
 
