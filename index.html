@@ -32,7 +32,7 @@ select{
 }
 .chart{
   width: 400px;
-  height: 350px;
+  height: 400px;
 }
 .chart + .chart-controls {
   display: none;
@@ -316,7 +316,7 @@ const wdgTypes = {
 const defaultPlotlyLayout = { //See https://plotly.com/javascript/reference/layout/
   autosize: false,
   width: 400,
-  height: 350,
+  height: 400,
   // font: {
   //   family: 'Courier New, monospace',
   //   size: 14,
@@ -1394,6 +1394,7 @@ function load_config(){
   config.fileNames = config_load.fileNames;
   //Configure all the charts like a user would, but do the required widgets last so the charts only get built once.
   //First global styles
+  $('#global-config-header').click();
   if('globalStyleFile' in config_load){
     $('#global-style-file').val(config_load.globalStyleFile).change();
   }
@@ -1410,6 +1411,7 @@ function load_config(){
     }
     $(`#update-global-filter`).click();
   }
+  $('#global-config-header').click();
   //Now all dashboard, chart, and trace config.
   config_load.dashboards.forEach((db, di) => {
     $('.add-dashboard').click();
@@ -1417,11 +1419,13 @@ function load_config(){
       $(`[data-dashboardID="${di}"] .add-chart`).click();
       //Add custom styles for chart
       if('style' in cht){
+        $(`#dash-${di}-chart-${ci} .chartstyle-div .styles-label`).click();
         for (const key in cht['style']){
           $(`#dash-${di}-chart-${ci} .chartstyle-div .add-style`).val(key).change();
           $(`#dash-${di}-chart-${ci} .chartstyle-div .style-outer input`).last().val(cht['style'][key]).change();
         }
         $(`#dash-${di}-chart-${ci} .chartstyle-div .update-style`).click();
+        $(`#dash-${di}-chart-${ci} .chartstyle-div .styles-label`).click();
       }
       cht.traces.forEach((trc, ti) => {
         $(`#dash-${di}-chart-${ci} .add-trace`).click();
@@ -1435,6 +1439,7 @@ function load_config(){
         }
         //Now filters
         if('filter' in trc){
+          $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filters-label`).click();
           for (const key in trc['filter']){
             $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .add-filter`).val(key).change();
             $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .include-exclude`).last().val(trc['filter'][key]['include_exclude']).change();
@@ -1445,14 +1450,7 @@ function load_config(){
             });
           }
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-filter`).click();
-        }
-        //Now custom styles for trace
-        if('style' in trc){
-          for (const key in trc['style']){
-            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .add-style`).val(key).change();
-            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .style-outer input`).last().val(trc['style'][key]).change();
-          }
-          $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-style`).click();
+          $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filters-label`).click();
         }
         //Now non-required widgets
         for (const key in trc){
