@@ -377,8 +377,14 @@ const customStyle = {
     'X-axis Label Angle (deg)': {
       path: ['xaxis','tickangle'],
     },
+    'X-axis Scale': {
+      path: ['xaxis','scale_values'],
+    },
     'Y-axis Title': {
       path: ['yaxis','title','text'],
+    },
+    'Y-axis Scale': {
+      path: ['yaxis','scale_values'],
     },
     'Map Style': {
       path: ['mapbox','style'],
@@ -415,12 +421,10 @@ For Plots::
 Opacity (0-1): 0.8
 Sync Axes: Yes
 Flip Axes: No
-X Scale: 1
 X Min:
 X Max:
 X Title Font Size: 10
 X Labels Font Size: 8
-Y Scale: 1
 Y Min:
 Y Max:
 Y Title Font Size: 10
@@ -1185,6 +1189,12 @@ function updateChart(dash_idx, chart_idx){
                 }
               }
               updateObj(plotlyLayout, propPath, propVal);
+            }
+            //One-offs
+            if(prop == 'X-axis Scale'){
+              ser['x'] = ser['x'].map(x => x * propVal);
+            } else if(prop == 'Y-axis Scale'){
+              ser['y'] = ser['y'].map(y => y * propVal);
             }
           }
         }
