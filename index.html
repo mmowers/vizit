@@ -358,71 +358,82 @@ const defaultPlotlyConfig = { //See https://plotly.com/javascript/configuration-
 //Maybe note which properties are in layout and which will be in the trace itself. Maybe just use schema?
 //But perhaps assume that all trace properties are common across trace types, although some, e.g. 
 const customStyle = {
-  'layout':{
-    'Plot Width (px)': {
-      path: ['width'],
-    },
-    'Plot Height (px)': {
-      path: ['height'],
-    },
-    'Plot Title': {
-      path: ['title','text'],
-    },
-    'Plot Title Font Size': {
-      path: ['title','font','size'],
-    },
-    'X Title': {
-      path: ['xaxis','title','text'],
-    },
-    'X Label Angle (deg)': {
-      path: ['xaxis','tickangle'],
-    },
-    'X Scale': {
-    },
-    'X Min': {
-      tooltip: 'Right now, "X Min" only works with "X Max" set as well',
-    },
-    'X Max': {
-      tooltip: 'Right now, "X Max" only works with "X Min" set as well',
-    },
-    'Y Title': {
-      path: ['yaxis','title','text'],
-    },
-    'Y Scale': {
-    },
-    'Y Min': {
-      tooltip: 'Right now, "Y Min" only works with "Y Max" set as well',
-    },
-    'Y Max': {
-      tooltip: 'Right now, "Y Max" only works with "Y Min" set as well',
-    },
-    'Map Style': {
-      path: ['mapbox','style'],
-      tooltip: 'See https://plotly.com/javascript/reference/layout/mapbox/#layout-mapbox-style',
-    },
-    'Map Zoom': {
-      path: ['mapbox','zoom'],
-    },
-    'Map Center Latitude': {
-      path: ['mapbox','center','lat'],
-    },
-    'Map Center Longitude': {
-      path: ['mapbox','center','lon'],
-    },
+  'Plot Width (px)': {
+    type: 'layout',
+    path: ['width'],
   },
-  'data':{
-    'Bar Width': {
-      path: ['width'], //this only gets used for bar charts
-    },
-    'Line Width (pt)': {
-      path: ['line','width'],
-    },
-    'Dot Size (pt)': {
-      path: ['marker','size'],
-    },
-    'Opacity (0-1)': {
-      path: ['marker','opacity'],
-    },
+  'Plot Height (px)': {
+    type: 'layout',
+    path: ['height'],
+  },
+  'Plot Title': {
+    type: 'layout',
+    path: ['title','text'],
+  },
+  'Plot Title Font Size': {
+    type: 'layout',
+    path: ['title','font','size'],
+  },
+  'X Title': {
+    type: 'layout',
+    path: ['xaxis','title','text'],
+  },
+  'X Label Angle (deg)': {
+    type: 'layout',
+    path: ['xaxis','tickangle'],
+  },
+  'X Scale': {
+  },
+  'X Min': {
+    tooltip: 'Right now, "X Min" only works with "X Max" set as well',
+  },
+  'X Max': {
+    tooltip: 'Right now, "X Max" only works with "X Min" set as well',
+  },
+  'Y Title': {
+    type: 'layout',
+    path: ['yaxis','title','text'],
+  },
+  'Y Scale': {
+  },
+  'Y Min': {
+    tooltip: 'Right now, "Y Min" only works with "Y Max" set as well',
+  },
+  'Y Max': {
+    tooltip: 'Right now, "Y Max" only works with "Y Min" set as well',
+  },
+  'Map Style': {
+    type: 'layout',
+    path: ['mapbox','style'],
+    tooltip: 'See https://plotly.com/javascript/reference/layout/mapbox/#layout-mapbox-style',
+  },
+  'Map Zoom': {
+    type: 'layout',
+    path: ['mapbox','zoom'],
+  },
+  'Map Center Latitude': {
+    type: 'layout',
+    path: ['mapbox','center','lat'],
+  },
+  'Map Center Longitude': {
+    type: 'layout',
+    path: ['mapbox','center','lon'],
+  },
+  'Bar Width': {
+    type: 'data',
+    path: ['width'], //this only gets used for bar charts
+  },
+  'Line Width (pt)': {
+    type: 'data',
+    path: ['line','width'],
+  },
+  'Dot Size (pt)': {
+    type: 'data',
+    path: ['marker','size'],
+  },
+  'Opacity (0-1)': {
+    type: 'data',
+    path: ['marker','opacity'],
   },
 };
 
@@ -570,10 +581,7 @@ $('#report').on('click','.add-chart', function(){
   traceData[dash_idx][chart_idx] = [];
   //Custom styling
   let styleOptionsHTML = `<option value="none">Add Style</option>`;
-  for (const key in customStyle.layout){
-    styleOptionsHTML += `<option value="${key}">${key}</option>`;
-  }
-  for (const key in customStyle.data){
+  for (const key in customStyle){
     styleOptionsHTML += `<option value="${key}">${key}</option>`;
   }
   //Build html
@@ -871,7 +879,7 @@ $('#report').on('change','.add-style', function(){
     <div class="style-outer">
       <label class="style-name">${$(this).val()}</label>
       <input type="text">
-      <span class="tooltip-parent">?<span class="tooltip"></span></span>
+      <span class="tooltip-parent">?<span class="tooltip">${customStyle[$(this).val()].tooltip}</span></span>
     </div>
   `;
   $(this).before(html);
@@ -1179,10 +1187,10 @@ function updateChart(dash_idx, chart_idx){
         if('style' in chart_config){
           for(const prop in chart_config['style']){
             let propVal = chart_config['style'][prop];
-            if(prop in customStyle.data && 'path' in customStyle.data[prop]){
-              updateObj(ser, customStyle.data[prop].path, propVal);
-            } else if(prop in customStyle.layout && 'path' in customStyle.layout[prop]){
-              let propPath = [...customStyle.layout[prop].path]; //this uses spread operator to make shallow copy
+            if(prop in customStyle && 'type' in customStyle[prop] && customStyle[prop]['type'] == 'data'){
+              updateObj(ser, customStyle[prop].path, propVal);
+            } else if(prop in customStyle && 'type' in customStyle[prop] && customStyle[prop]['type'] == 'layout'){
+              let propPath = [...customStyle[prop].path]; //this uses spread operator to make shallow copy
               if(propPath[0] == 'xaxis'){
                 propPath[0] = layoutXaxis;
                 if(propPath[1] == 'title' && propPath[2] == 'text'){
@@ -1202,16 +1210,16 @@ function updateChart(dash_idx, chart_idx){
             } else if(prop == 'Y Scale'){
               ser['y'] = ser['y'].map(y => y * propVal);
             } else if(prop == 'X Min'){
-              if(!('range' in plotlyLayout.xaxis)) plotlyLayout.xaxis.range = [null,null];
+              if(!('range' in plotlyLayout[layoutXaxis])) plotlyLayout[layoutXaxis].range = [null,null];
               plotlyLayout.xaxis.range[0] = Number(propVal);
             } else if(prop == 'X Max'){
-              if(!('range' in plotlyLayout.xaxis)) plotlyLayout.xaxis.range = [null,null];
+              if(!('range' in plotlyLayout[layoutXaxis])) plotlyLayout[layoutXaxis].range = [null,null];
               plotlyLayout.xaxis.range[1] = Number(propVal);
             } else if(prop == 'Y Min'){
-              if(!('range' in plotlyLayout.yaxis)) plotlyLayout.yaxis.range = [null,null];
+              if(!('range' in plotlyLayout[layoutYaxis])) plotlyLayout[layoutYaxis].range = [null,null];
               plotlyLayout.yaxis.range[0] = Number(propVal);
             } else if(prop == 'Y Max'){
-              if(!('range' in plotlyLayout.yaxis)) plotlyLayout.yaxis.range = [null,null];
+              if(!('range' in plotlyLayout[layoutYaxis])) plotlyLayout[layoutYaxis].range = [null,null];
               plotlyLayout.yaxis.range[1] = Number(propVal);
             }
           }
