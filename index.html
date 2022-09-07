@@ -373,6 +373,9 @@ const customStyle = {
   'Move Chart Left/Right (px)': {
     tooltip: 'Negative number moves chart left and positive number moves chart right',
   },
+  'Z-index': {
+    tooltip: 'Enter a number. Higher z-index will bring to front, lower z-index will move to back. See https://www.w3schools.com/cssref/pr_pos_z-index.asp',
+  },
   'Plot Title': {
     type: 'layout',
     path: ['title','text'],
@@ -1260,6 +1263,9 @@ function updateChart(dash_idx, chart_idx){
     }
     if('style' in chart_config && 'Move Chart Left/Right (px)' in chart_config['style']){
       $(`#dash-${dash_idx}-chart-${chart_idx}`).css('left',chart_config['style']['Move Chart Left/Right (px)'] + 'px');
+    }
+    if('style' in chart_config && 'Z-index' in chart_config['style']){
+      $(`#dash-${dash_idx}-chart-${chart_idx}`).css('z-index',chart_config['style']['Z-index']);
     }
     Plotly.react(`chart-dash-${dash_idx}-chart-${chart_idx}`, plotlyData, plotlyLayout, defaultPlotlyConfig);
     // window.dispatchEvent(new Event('resize')); //This works but maybe we should just be using plotly width and height...
