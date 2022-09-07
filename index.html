@@ -29,6 +29,7 @@ select{
 }
 .chart-outer{
   display: inline-block;
+  position: relative;
 }
 .chart{
   width: 400px;
@@ -366,11 +367,18 @@ const customStyle = {
     type: 'layout',
     path: ['height'],
   },
+  'Move Chart Up/Down (px)': {
+    tooltip: 'Negative number moves chart up and positive number moves chart down',
+  },
+  'Move Chart Left/Right (px)': {
+    tooltip: 'Negative number moves chart left and positive number moves chart right',
+  },
   'Plot Title': {
     type: 'layout',
     path: ['title','text'],
+    tooltip: 'Manually change the title of the plot.',
   },
-  'Plot Title Font Size': {
+  'Plot Title Font Size (pt)': {
     type: 'layout',
     path: ['title','font','size'],
   },
@@ -391,6 +399,7 @@ const customStyle = {
     path: ['xaxis','tickangle'],
   },
   'X Scale': {
+    tooltip: 'Enter a number to scale the x values',
   },
   'X Min': {
     tooltip: 'Right now, "X Min" only works with "X Max" set as well',
@@ -411,6 +420,7 @@ const customStyle = {
     path: ['yaxis','tickfont','size'],
   },
   'Y Scale': {
+    tooltip: 'Enter a number to scale the y values',
   },
   'Y Min': {
     tooltip: 'Right now, "Y Min" only works with "Y Max" set as well',
@@ -1245,6 +1255,12 @@ function updateChart(dash_idx, chart_idx){
     $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).width(plotlyLayout.width);
     $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).height(plotlyLayout.height);
 
+    if('style' in chart_config && 'Move Chart Up/Down (px)' in chart_config['style']){
+      $(`#dash-${dash_idx}-chart-${chart_idx}`).css('top',chart_config['style']['Move Chart Up/Down (px)'] + 'px');
+    }
+    if('style' in chart_config && 'Move Chart Left/Right (px)' in chart_config['style']){
+      $(`#dash-${dash_idx}-chart-${chart_idx}`).css('left',chart_config['style']['Move Chart Left/Right (px)'] + 'px');
+    }
     Plotly.react(`chart-dash-${dash_idx}-chart-${chart_idx}`, plotlyData, plotlyLayout, defaultPlotlyConfig);
     // window.dispatchEvent(new Event('resize')); //This works but maybe we should just be using plotly width and height...
   } else if(chartTypes[chart_config.traces[0].type].engine == 'google'){
