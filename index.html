@@ -371,20 +371,30 @@ const customStyle = {
     'Plot Title Font Size': {
       path: ['title','font','size'],
     },
-    'X-axis Title': {
+    'X Title': {
       path: ['xaxis','title','text'],
     },
-    'X-axis Label Angle (deg)': {
+    'X Label Angle (deg)': {
       path: ['xaxis','tickangle'],
     },
-    'X-axis Scale': {
-      path: ['xaxis','scale_values'],
+    'X Scale': {
     },
-    'Y-axis Title': {
+    'X Min': {
+      tooltip: 'Right now, "X Min" only works with "X Max" set as well',
+    },
+    'X Max': {
+      tooltip: 'Right now, "X Max" only works with "X Min" set as well',
+    },
+    'Y Title': {
       path: ['yaxis','title','text'],
     },
-    'Y-axis Scale': {
-      path: ['yaxis','scale_values'],
+    'Y Scale': {
+    },
+    'Y Min': {
+      tooltip: 'Right now, "Y Min" only works with "Y Max" set as well',
+    },
+    'Y Max': {
+      tooltip: 'Right now, "Y Max" only works with "Y Min" set as well',
     },
     'Map Style': {
       path: ['mapbox','style'],
@@ -421,12 +431,8 @@ For Plots::
 Opacity (0-1): 0.8
 Sync Axes: Yes
 Flip Axes: No
-X Min:
-X Max:
 X Title Font Size: 10
 X Labels Font Size: 8
-Y Min:
-Y Max:
 Y Title Font Size: 10
 Y Labels Font Size: 8
 Sort Data: Yes
@@ -1173,9 +1179,9 @@ function updateChart(dash_idx, chart_idx){
         if('style' in chart_config){
           for(const prop in chart_config['style']){
             let propVal = chart_config['style'][prop];
-            if(prop in customStyle.data){
+            if(prop in customStyle.data && 'path' in customStyle.data[prop]){
               updateObj(ser, customStyle.data[prop].path, propVal);
-            } else if(prop in customStyle.layout){
+            } else if(prop in customStyle.layout && 'path' in customStyle.layout[prop]){
               let propPath = [...customStyle.layout[prop].path]; //this uses spread operator to make shallow copy
               if(propPath[0] == 'xaxis'){
                 propPath[0] = layoutXaxis;
@@ -1191,10 +1197,22 @@ function updateChart(dash_idx, chart_idx){
               updateObj(plotlyLayout, propPath, propVal);
             }
             //One-offs
-            if(prop == 'X-axis Scale'){
+            if(prop == 'X Scale'){
               ser['x'] = ser['x'].map(x => x * propVal);
-            } else if(prop == 'Y-axis Scale'){
+            } else if(prop == 'Y Scale'){
               ser['y'] = ser['y'].map(y => y * propVal);
+            } else if(prop == 'X Min'){
+              if(!('range' in plotlyLayout.xaxis)) plotlyLayout.xaxis.range = [null,null];
+              plotlyLayout.xaxis.range[0] = Number(propVal);
+            } else if(prop == 'X Max'){
+              if(!('range' in plotlyLayout.xaxis)) plotlyLayout.xaxis.range = [null,null];
+              plotlyLayout.xaxis.range[1] = Number(propVal);
+            } else if(prop == 'Y Min'){
+              if(!('range' in plotlyLayout.yaxis)) plotlyLayout.yaxis.range = [null,null];
+              plotlyLayout.yaxis.range[0] = Number(propVal);
+            } else if(prop == 'Y Max'){
+              if(!('range' in plotlyLayout.yaxis)) plotlyLayout.yaxis.range = [null,null];
+              plotlyLayout.yaxis.range[1] = Number(propVal);
             }
           }
         }
