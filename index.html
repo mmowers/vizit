@@ -279,13 +279,6 @@ const chartTypes = {
       showlegend: true,
     }
   },
-  'lat/lng/radius google map':{
-    wdgTypes: ['lat','lng','radius','name'],
-    required:['lat','lng','radius'],
-    defaultAgg: 'none',
-    aggCol: 'none',
-    engine:'google',
-  },
 };
 
 //Every chart can have series, rows, and columns
@@ -1269,43 +1262,6 @@ function updateChart(dash_idx, chart_idx){
     }
     Plotly.react(`chart-dash-${dash_idx}-chart-${chart_idx}`, plotlyData, plotlyLayout, defaultPlotlyConfig);
     // window.dispatchEvent(new Event('resize')); //This works but maybe we should just be using plotly width and height...
-  } else if(chartTypes[chart_config.traces[0].type].engine == 'google'){
-    //I can't figure out how to load google maps script only when needed, something like:
-    //$('body').append('<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly"><\/script>');
-    //Also note that statement can't have the end script tag exactly because js thinks that thats the end of the script, so we add backslash.
-    let gMap = new google.maps.Map(document.getElementById(`chart-dash-${dash_idx}-chart-${chart_idx}`),
-    {
-      zoom: 3,
-      center: { lat: 37.09, lng: -95.712 },
-      mapTypeId: "terrain",
-    });
-    for(let i = 0; i < chart_data.length; i++){
-      let trace_config = chart_config.traces[i];
-      let subtrace_data= chart_data[i].subtraces;
-      let chartType = chartTypes[trace_config.type];
-      for(const ser of subtrace_data){
-        for (let j = 0; j < ser['lat'].length; j++) {
-          let mapCircle = new google.maps.Circle({
-            strokeWeight: 0,
-            fillColor: "#FF0000",
-            // fillOpacity: -1/2000*thisMetric + 1, //y=mx + b, where y is opacity, from 0 to 1.
-            map:gMap,
-            center: {lat: ser['lat'][j], lng: ser['lng'][j]},
-            radius: ser['radius'][j],
-            // customText: 'Reduced Cost: ' + thisMetric + ' $/kW',
-          });
-          // google.maps.event.addListener(mapCircle, 'click', gmCircleListener);
-        }
-      }
-    }
-    if('style' in chart_config){
-      if('Plot Width (px)' in chart_config.style){
-        $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).width(chart_config.style['Plot Width (px)']);
-      }
-      if('Plot Height (px)' in chart_config.style){
-        $(`#chart-dash-${dash_idx}-chart-${chart_idx}`).height(chart_config.style['Plot Height (px)']);
-      }
-    }
   }
 }
 
@@ -1580,15 +1536,10 @@ if('config' in params){
 }
 
 </script>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIWJ6Gd3cnTqmE3_rYiDZmCwcFVurpjgw&v=weekly" async></script>
 <script>
 //The following saves the original html so that we can save into html. It needs to be at the very end so we get everything.
-//Maybe we should wait until onload? i think i remember some more google tags ending up in the html on load, though.
-//Regardless, those might randomly appear in orig_html via race condition...
 let orig_html_str = $('html').prop('outerHTML');
 //we need to remove this one plotly style tag that plotly adds, otherwise it will build up on susequent file download.
-//After that, the only meaningful difference with the original file is the google key,
-//which has &amp; instead of &. See https://stackoverflow.com/questions/5920720/innerhtml-gives-me-as-amp
 let plotly_style = $('html').find('[id="plotly.js-style-global"]').prop('outerHTML');
 orig_html_str = orig_html_str.replace(plotly_style, ''); //or see https://stackoverflow.com/questions/1405128/remove-dom-elements-from-jquery-object
 orig_html_str = '<!DOCTYPE html>\n' + orig_html_str;
