@@ -596,6 +596,8 @@ $('#report').on('click','.add-dashboard', function(){
       <button class="add-chart">Add Chart</button>
     </div>
   `);
+  //Automatically click to add the first chart
+  $(`[data-dashboardID="${dash_idx}"] .add-chart`).click();
 });
 $('#report').on('click','.add-chart', function(){
   let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
@@ -622,6 +624,8 @@ $('#report').on('click','.add-chart', function(){
     </div>
   `;
   $(this).before(html);
+  //Automatically click to add the first trace
+  $(`#dash-${dash_idx}-chart-${chart_idx} .add-trace`).click();
 });
 
 $('#report').on('click','.add-trace', function(){
@@ -1473,7 +1477,9 @@ function load_config(){
   config_load.dashboards.forEach((db, di) => {
     $('.add-dashboard').click();
     db.charts.forEach((cht, ci) => {
-      $(`[data-dashboardID="${di}"] .add-chart`).click();
+      if(ci > 0){ //The first one is clicked automatically
+        $(`[data-dashboardID="${di}"] .add-chart`).click();
+      }
       //Add custom styles for chart
       if('style' in cht){
         $(`#dash-${di}-chart-${ci} .chartstyle-div .styles-label`).click();
@@ -1485,7 +1491,9 @@ function load_config(){
         $(`#dash-${di}-chart-${ci} .chartstyle-div .styles-label`).click();
       }
       cht.traces.forEach((trc, ti) => {
-        $(`#dash-${di}-chart-${ci} .add-trace`).click();
+        if(ti > 0){ //The first one is clicked automatically
+          $(`#dash-${di}-chart-${ci} .add-trace`).click();
+        }
         //dataSource first
         if('dataSource' in trc){
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .data-source`).val(trc['dataSource']).change();
