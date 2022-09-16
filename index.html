@@ -264,6 +264,22 @@ const chartTypes = {
       mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
     }
   },
+  'lat/lon plotly map (continuous color)':{
+    engine:'plotly',
+    attr: {
+      type: 'scattermapbox',
+    },
+    wdgTypes: ['lat','lon','marker_color','marker_size','text'],
+    required:['lat','lon'],
+    defaultAgg: 'none',
+    aggCol: 'none',
+    layout:{
+      width: 800,
+      height: 400,
+      dragmode: 'zoom',
+      mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
+    }
+  },
   'lat/lon/area plotly map':{
     engine:'plotly',
     attr: {
@@ -304,6 +320,7 @@ const wdgTypes = {
   radius: 'Radius (m)',
   area: 'Area (sq_km)',
   marker_size: 'Marker Size',
+  marker_color: 'Color',
   lat: 'Latitude',
   lng: 'Longitude',
   lon: 'Longitude',
@@ -353,6 +370,18 @@ const defaultPlotlyConfig = { //See https://plotly.com/javascript/configuration-
     scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
   },
 };
+
+const rainbow_scl = [[0, 'rgb(150,0,90)'],[0.125, 'rgb(0, 0, 200)'],[0.25,'rgb(0, 25, 255)'],
+                     [0.375,'rgb(0, 152, 255)'],[0.5,'rgb(44, 255, 150)'],[0.625,'rgb(151, 255, 0)'],
+                     [0.75,'rgb(255, 234, 0)'],[0.875,'rgb(255, 111, 0)'],[1,'rgb(255, 0, 0)']];
+
+const default_colorbar = {
+  thickness: 10,
+  titleside: 'right',
+  outlinecolor: 'rgba(0,0,0,0)',
+  ticks: 'outside',
+  ticklen: 3,
+}
 
 //Maybe note which properties are in layout and which will be in the trace itself. Maybe just use schema?
 //But perhaps assume that all trace properties are common across trace types, although some, e.g. 
@@ -1206,6 +1235,11 @@ function updateChart(dash_idx, chart_idx){
             let marker_size_scaled = ser.marker_size.map(i => i / marker_size_max*15);
             updateObj(ser, ['marker','size'], marker_size_scaled);
           }
+          if('marker_color' in trace_config){
+            updateObj(ser, ['marker','color'], ser.marker_color);
+            ser.marker.colorscale = rainbow_scl;
+            ser.marker.colorbar = default_colorbar;
+          }
           if(sepWdg.includes('name')){
             ser.name = ser.sepVals[sepWdg.indexOf('name')];
             if (!$.isEmptyObject(globalStyles)
@@ -1218,9 +1252,6 @@ function updateChart(dash_idx, chart_idx){
               updateObj(ser, ['marker','color'], globalColors[sepWdgUniques.name.indexOf(ser.name)]);
               updateObj(ser, ['line','color'], globalColors[sepWdgUniques.name.indexOf(ser.name)]);
             }
-          } else{
-            updateObj(ser, ['marker','color'], globalColors[0]);
-            updateObj(ser, ['line','color'], globalColors[0]);
           }
           ser.legendgroup = ser.name;
           if(seriesVals.includes(ser.name)){
