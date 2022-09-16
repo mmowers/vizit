@@ -1107,6 +1107,9 @@ function updateChart(dash_idx, chart_idx){
       let plotlyData = [];
       let plotlyLayout = JSON.parse(JSON.stringify(defaultPlotlyLayout));
       for(let i = 0; i < chart_data.length; i++){
+        if(!('subtraces' in chart_data[i])){
+          continue;
+        }
         let trace_config = chart_config.traces[i];
         let sepWdg = chart_data[i].sepWdg;
         let sepWdgUniques = chart_data[i].sepWdgUniques;
