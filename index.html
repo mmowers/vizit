@@ -461,7 +461,9 @@ const customStyle = {
   'Map Style': {
     type: 'layout',
     path: ['mapbox','style'],
-    tooltip: 'See https://plotly.com/javascript/reference/layout/mapbox/#layout-mapbox-style',
+    tooltip: `Free ones are carto-darkmatter, carto-positron, open-street-map,
+              stamen-terrain, stamen-toner, stamen-watercolor, white-bg.
+              See https://plotly.com/javascript/reference/layout/mapbox/#layout-mapbox-style`,
   },
   'Map Zoom': {
     type: 'layout',
@@ -490,6 +492,13 @@ const customStyle = {
   'Opacity (0-1)': {
     type: 'data',
     path: ['marker','opacity'],
+  },
+  'Colorscale': {
+    type: 'data',
+    path: ['marker','colorscale'],
+    tooltip: `For plotly lat/lng continuous maps. e.g. Blackbody, Bluered, Blues,
+              Cividis, Earth, Electric, Greens, Greys, Hot, Jet, Picnic, Portland, Rainbow,
+              RdBu, Reds, Viridis, YlGnBu, YlOrRd`,
   },
   'Colorscale Min': {
     type: 'data',
