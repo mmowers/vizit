@@ -275,7 +275,7 @@ const chartTypes = {
       geo: {scope:'usa'},
     }
   },
-  'lat/lon plotly map':{
+  'lat/lon/dot plotly map':{
     engine:'plotly',
     attr: {
       type: 'scattermapbox',
@@ -291,7 +291,7 @@ const chartTypes = {
       mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
     }
   },
-  'lat/lon plotly map (continuous color)':{
+  'lat/lon/dot plotly map (continuous color)':{
     engine:'plotly',
     attr: {
       type: 'scattermapbox',
@@ -508,11 +508,11 @@ const customStyle = {
     type: 'data',
     path: ['width'], //this only gets used for bar charts
   },
-  'Line Width (pt)': {
+  'Line Width (px)': {
     type: 'data',
     path: ['line','width'],
   },
-  'Dot Size (pt)': {
+  'Dot Size (px)': {
     type: 'data',
     path: ['marker','size'],
   },
@@ -523,7 +523,7 @@ const customStyle = {
   'Colorscale': {
     type: 'data',
     path: ['marker','colorscale'],
-    tooltip: `For plotly lat/lng continuous maps. e.g. Blackbody, Bluered, Blues,
+    tooltip: `For plotly lat/lon (continuous color) maps. e.g. Blackbody, Bluered, Blues,
               Cividis, Earth, Electric, Greens, Greys, Hot, Jet, Picnic, Portland, Rainbow,
               RdBu, Reds, Viridis, YlGnBu, YlOrRd`,
   },
@@ -1311,7 +1311,12 @@ function updateChart(dash_idx, chart_idx){
             for(const prop in chart_config['style']){
               let propVal = chart_config['style'][prop];
               if(prop in customStyle && 'type' in customStyle[prop] && customStyle[prop]['type'] == 'data'){
-                updateObj(ser, customStyle[prop].path, propVal);
+                if(prop == 'Dot Size (px)' && 'marker_size' in trace_config){
+                  let marker_size_scaled = ser.marker.size.map(i => i * propVal/6);
+                  updateObj(ser, ['marker','size'], marker_size_scaled);
+                } else{
+                  updateObj(ser, customStyle[prop].path, propVal);
+                }
               } else if(prop in customStyle && 'type' in customStyle[prop] && customStyle[prop]['type'] == 'layout'){
                 let propPath = [...customStyle[prop].path]; //this uses spread operator to make shallow copy
                 if(propPath[0] == 'xaxis'){
