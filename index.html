@@ -130,7 +130,7 @@ text.js-plot-link-container{
         ?
         <span class="tooltip">
           This file must have three columns named 'column_name', 'column_value', and 'color'. The order
-          of the rows will determine the order of display.
+          of the rows will eventually determine the order of display, but this hasn't yet been added.
         </span>
       </span>
     </div>
@@ -221,6 +221,7 @@ const chartTypes = {
     aggCol: 'y',
     layout:{
       barmode: 'relative',
+      //traceorder: 'reversed', //This doesn't seem to be working...
     },
   },
   '3D dot':{
@@ -951,12 +952,18 @@ $('#report').on('change','.add-style', function(){
   let html = `
     <div class="style-outer">
       <label class="style-name">${$(this).val()}</label>
-      <input type="text">
+      <input class="style-input" type="text">
       <span class="tooltip-parent">?<span class="tooltip">${customStyle[$(this).val()].tooltip}</span></span>
     </div>
   `;
   $(this).before(html);
   $(this).val('none');
+});
+
+$('#report').on('keyup','.style-input', function(){
+  if (event.keyCode === 13) {
+        $(this).closest('.chartstyle-div').find('.update-style').click();
+    }
 });
 
 $('#report').on('click','.chartstyle-div .update-style', function(){
