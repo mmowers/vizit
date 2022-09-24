@@ -1,33 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script>
-'use strict';
-const urlQueryString = new URLSearchParams(window.location.search);
-const queryObj = Object.fromEntries(urlQueryString.entries());
-if('gitcommit' in queryObj){
-  fetch(`https://raw.githubusercontent.com/mmowers/vizit/${queryObj.gitcommit}/index.html`)
-    .then(function (response) {
-        switch (response.status) {
-            // status "OK"
-            case 200:
-              return response.text();
-            // status "Not Found"
-            case 404:
-                throw response;
-        }
-    })
-    .then(function (template) {
-        document.open();
-        document.write(template);
-        document.close();
-    })
-    .catch(function (response) {
-        // "Not Found"
-        console.log(response.statusText);
-    });
-}
-</script>
 <title>Vizit</title>
 <style>
 label {
