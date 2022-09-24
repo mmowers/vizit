@@ -1310,6 +1310,9 @@ function updateChart(dash_idx, chart_idx){
           if('style' in chart_config){
             for(const prop in chart_config['style']){
               let propVal = chart_config['style'][prop];
+              if(propVal == ''){
+                continue;
+              }
               if(prop in customStyle && 'type' in customStyle[prop] && customStyle[prop]['type'] == 'data'){
                 if(prop == 'Dot Size (px)' && 'marker_size' in trace_config){
                   let marker_size_scaled = ser.marker.size.map(i => i * propVal/6);
