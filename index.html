@@ -832,6 +832,7 @@ function getFilterHTML(column){
         <option value="greater-or-equal">Greater than or equal to</option>
         <option value="less">Less than</option>
         <option value="less-or-equal">Less than or equal to</option>
+        <option value="between-inclusive">Between (inclusive)</option>
       </select>
     </div>`;
 }
@@ -925,9 +926,6 @@ function getFilterVal(that){
     }
   } else if($(that).find('.filter-val-text').length > 0){
     let textVal = $(that).find('.filter-val-text').val();
-    if($.isNumeric(textVal)){
-      textVal = Number(textVal);
-    }
     filterVal = textVal == '' ? undefined : textVal;
   }
   return filterVal;
@@ -1138,6 +1136,11 @@ function applyFilters(data_in, filters_in = {}){
         }
       } else if(filt.filter_type == 'less-or-equal'){
         if(data_in[col_filt][i] > filt.filter_val){
+          continue loop1;
+        }
+      } else if(filt.filter_type == 'between-inclusive'){
+        let filt_arr = filt.filter_val.split(',');
+        if(data_in[col_filt][i] < filt_arr[0] || data_in[col_filt][i] > filt_arr[1]){
           continue loop1;
         }
       }
