@@ -819,19 +819,31 @@ function updateGlobalFilters(newFile){
   }
 }
 
-function getFilterHTML(column, uniques){
-  let html = `
+function getFilterHTML(column){
+  return `
     <div class="filter-outer">
       <label class="filter-name">${column}</label>
-      <select class="include-exclude">
-        <option value="include">Include Only</option>
-        <option value="exclude">Exclude Only</option>
+      <select class="filter-type">
+        <option value="none">Filter Type</option>
+        <option value="include">Include Options</option>
+        <option value="exclude">Exclude Options</option>
+        <option value="equals">Equals</option>
+        <option value="greater">Greater than</option>
+        <option value="greater-or-equal">Greater than or equal to</option>
+        <option value="less">Less than</option>
+        <option value="less-or-equal">Less than or equal to</option>
       </select>
+    </div>`;
+}
+
+function getFilterCheckBox(uniques){
+  let html = `
+    <div class="filter-val filter-val-options">
       <div>
         <button class="select-all">All</button>
         <button class="select-none">None</button>
       </div>
-      <div class="filter-vals">
+      <div>
   `;
   for (let i = 0; i < uniques.length; i++){
     html += `<label><input type="checkbox" name="filter-val" value="${i}">${uniques[i]}</label><br>`;
@@ -844,16 +856,7 @@ $('#add-global-filter').change(function(){
   if($(this).val() == 'none'){
     return;
   }
-  //First concatenate all values from all rawData with this column,
-  //then find uniques
-  let uniques = [];
-  for (const fileName in rawData){
-    if($(this).val() in rawData[fileName]){
-      uniques = uniques.concat(rawData[fileName][$(this).val()])
-    }
-  }
-  uniques = [...new Set(uniques)];
-  let html = getFilterHTML($(this).val(), uniques);
+  let html = getFilterHTML($(this).val());
   $(this).before(html);
   $(this).val('none');
 });
@@ -862,12 +865,43 @@ $('#report').on('change','.add-filter', function(){
   if($(this).val() == 'none'){
     return;
   }
-  const [dash_idx, chart_idx, trace_idx] = get_idx(this);
-  const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  const uniques = [... new Set(rawData[trace_config.dataSource][$(this).val()])]; //maybe uniques should be evaluated and saved earlier...
-  let html = getFilterHTML($(this).val(), uniques);
+  let html = getFilterHTML($(this).val());
   $(this).before(html);
   $(this).val('none');
+});
+
+$('#report').on('change','.filter-type', function(){
+  //If we have filter-val, remove it.
+  $(this).next('.filter-val').remove();
+  if($(this).val() == 'none'){
+    let filterName = $(this).prev('.filter-name').text();
+    if(filterName in config.filter){
+      delete config.filter[filterName];
+    }
+    return;
+  }
+  if(['include','exclude'].includes($(this).val())){
+    const filterName = $(this).siblings('.filter-name').text();
+    let uniques = [];
+    if($(this).closest('#global-filter-config').length > 0){
+      //First concatenate all values from all rawData with this column,
+      //then find uniques
+      for (const fileName in rawData){
+        if(filterName in rawData[fileName]){
+          uniques = uniques.concat(rawData[fileName][filterName])
+        }
+      }
+      uniques = [...new Set(uniques)];
+    } else{
+      const [dash_idx, chart_idx, trace_idx] = get_idx(this);
+      const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+      uniques = [... new Set(rawData[trace_config.dataSource][filterName])]; //maybe uniques should be evaluated and saved earlier...
+    }
+    let html = getFilterCheckBox(uniques);
+    $(this).after(html);
+  } else{
+    $(this).after(`<input class="filter-val filter-val-text" type="text">`);
+  }
 });
 
 $('#report').on('click','.select-all, .select-none', function(){
@@ -875,20 +909,37 @@ $('#report').on('click','.select-all, .select-none', function(){
   $(this).parent().next().find('input').prop('checked',all_bool);
 });
 
-$('#update-global-filter').click(function(){
-  //Build filter config
-  config.filter={};
-  $(this).siblings('.filter-outer').each(function(){
-    const vals = [];
-    $(this).children('.filter-vals').find('input:checked').each(function(){
+function getFilterVal(that){
+  let filterVal;
+  if($(that).find('.filter-val-options').length > 0){
+    filterVal = [];
+    $(that).children('.filter-val').find('input:checked').each(function(){
       let changedVal = $(this).parent().text();
       if($.isNumeric(changedVal)){
         changedVal = Number(changedVal);
       }
-      vals.push(changedVal);
+      filterVal.push(changedVal);
     });
-    if (vals.length > 0){
-      config.filter[$(this).children('.filter-name').text()] = {'include_exclude':$(this).children('.include-exclude').val(), 'values':vals};
+    if (filterVal.length == 0){
+      filterVal = undefined;
+    }
+  } else if($(that).find('.filter-val-text').length > 0){
+    let textVal = $(that).find('.filter-val-text').val();
+    if($.isNumeric(textVal)){
+      textVal = Number(textVal);
+    }
+    filterVal = textVal == '' ? undefined : textVal;
+  }
+  return filterVal;
+}
+
+$('#update-global-filter').click(function(){
+  //Build filter config
+  config.filter={};
+  $(this).siblings('.filter-outer').each(function(){
+    let filterVal = getFilterVal(this);
+    if (filterVal !== undefined){
+      config.filter[$(this).children('.filter-name').text()] = {'filter_type':$(this).children('.filter-type').val(), 'filter_val':filterVal};
     }
   });
   let trace_config, raw_data, thisTraceData, allFilters;
@@ -928,16 +979,9 @@ $('#report').on('click','.update-filter', function(){
   //Build filter config
   trace_config.filter={};
   $(this).siblings('.filter-outer').each(function(){
-    const vals = [];
-    $(this).children('.filter-vals').find('input:checked').each(function(){
-      let changedVal = $(this).parent().text();
-      if($.isNumeric(changedVal)){
-        changedVal = Number(changedVal);
-      }
-      vals.push(changedVal);
-    });
-    if (vals.length > 0){
-      trace_config.filter[$(this).children('.filter-name').text()] = {'include_exclude':$(this).children('.include-exclude').val(), 'values':vals};
+    let filterVal = getFilterVal(this);
+    if (filterVal !== undefined){
+      trace_config.filter[$(this).children('.filter-name').text()] = {'filter_type':$(this).children('.filter-type').val(), 'filter_val':filterVal};
     }
   });
   let allFilters = {...config.filter, ...trace_config.filter}; //start with global, then overwrite with trace
@@ -1040,7 +1084,7 @@ function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
 
 function applyFilters(data_in, filters_in = {}){
   //data_in looks like {col1:[], col2:[],...}
-  //filters_in looks like {col1: {include_exclude: 'include', values:[]},...}
+  //filters_in looks like {col1: {filter_type: 'include', filter_val:[]},...}
   if($.isEmptyObject(filters_in)){
     return data_in;
   }
@@ -1062,12 +1106,32 @@ function applyFilters(data_in, filters_in = {}){
     //make sure this row passes all filters
     loop2:
     for(const [col_filt, filt] of filter_entries){
-      if(filt.include_exclude == 'include'){
-        if(!filt.values.includes(data_in[col_filt][i])){
+      if(filt.filter_type == 'include'){
+        if(!filt.filter_val.includes(data_in[col_filt][i])){
           continue loop1;
         }
-      }else{ //meaning 'exclude'
-        if(filt.values.includes(data_in[col_filt][i])){
+      } else if(filt.filter_type == 'exclude'){
+        if(filt.filter_val.includes(data_in[col_filt][i])){
+          continue loop1;
+        }
+      } else if(filt.filter_type == 'equals'){
+        if(data_in[col_filt][i] != filt.filter_val){
+          continue loop1;
+        }
+      } else if(filt.filter_type == 'greater'){
+        if(data_in[col_filt][i] <= filt.filter_val){
+          continue loop1;
+        }
+      } else if(filt.filter_type == 'greater-or-equal'){
+        if(data_in[col_filt][i] < filt.filter_val){
+          continue loop1;
+        }
+      } else if(filt.filter_type == 'less'){
+        if(data_in[col_filt][i] >= filt.filter_val){
+          continue loop1;
+        }
+      } else if(filt.filter_type == 'less-or-equal'){
+        if(data_in[col_filt][i] > filt.filter_val){
           continue loop1;
         }
       }
@@ -1349,7 +1413,6 @@ function updateChart(dash_idx, chart_idx){
               }
             }
           }
-          //Todo: Size needs to be within marker{}
           plotlyData.push(ser);
         }
       }
@@ -1543,12 +1606,16 @@ function load_config(){
   if('filter' in config_load){
     for (const key in config_load.filter){
       $(`#add-global-filter`).val(key).change();
-      $(`#global-filter-config .include-exclude`).last().val(config_load.filter[key]['include_exclude']).change();
-      $(`#global-filter-config .filter-vals`).last().children('label').each(function(){
-        if(config_load.filter[key]['values'].map(String).includes($(this).text())){ //perhaps map to string in separate step for speed
-          $(this).children('input').prop( "checked", true );
-        }
-      });
+      $(`#global-filter-config .filter-type`).last().val(config_load.filter[key]['filter_type']).change();
+      if(['include','exclude'].includes(config_load.filter[key].filter_type)){
+        $(`#global-filter-config .filter-val`).last().find('label').each(function(){
+          if(config_load.filter[key]['filter_val'].map(String).includes($(this).text())){ //perhaps map to string in separate step for speed
+            $(this).children('input').prop( "checked", true );
+          }
+        });
+      } else {
+        $(`#global-filter-config .filter-val`).last().val(config_load.filter[key].filter_val);
+      }
     }
     $(`#update-global-filter`).click();
   }
@@ -1587,12 +1654,17 @@ function load_config(){
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filters-label`).click();
           for (const key in trc['filter']){
             $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .add-filter`).val(key).change();
-            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .include-exclude`).last().val(trc['filter'][key]['include_exclude']).change();
-            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-vals`).last().children('label').each(function(){
-              if(trc['filter'][key]['values'].map(String).includes($(this).text())){ //perhaps map to string in separate step for speed
-                $(this).children('input').prop( "checked", true );
-              }
-            });
+            $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-type`).last().val(trc['filter'][key]['filter_type']).change();
+            //TODO: If filter type is include or exclude, do the following, else simply fill with value.
+            if(['include','exclude'].includes(trc.filter[key].filter_type)){
+              $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-val`).last().find('label').each(function(){
+                if(trc['filter'][key]['filter_val'].map(String).includes($(this).text())){ //perhaps map to string in separate step for speed
+                  $(this).children('input').prop( "checked", true );
+                }
+              });
+            } else{
+              $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-val`).last().val(trc.filter[key].filter_val);
+            }
           }
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-filter`).click();
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filters-label`).click();
