@@ -139,10 +139,10 @@ text.js-plot-link-container{
         </span>
       </span>
     </div>
-    <div id="global-filter-config">
+    <div id="global-filter-config" class="filter-div">
       Add Filters:
       <select id="add-global-filter"><option value="none">Add Filter</option></select>
-      <button id="update-global-filter">Update Filters</button>
+      <button id="update-global-filter" class="update-fil-common">Update Filters</button>
     </div>
   </div>
   <button class="add-dashboard">Add Dashboard</button>
@@ -775,7 +775,7 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
     <div class="filter-div">
       <label class="filters-label">Add Filters</label>
       <select class="add-filter">${filtOptionsHtml}</select>
-      <button class="update-filter">Update Filters</button>
+      <button class="update-filter update-fil-common">Update Filters</button>
     </div>
   `;
 
@@ -1021,6 +1021,12 @@ $('#report').on('change','.add-style', function(){
 $('#report').on('keyup','.style-input', function(){
   if (event.keyCode === 13) {
         $(this).closest('.chartstyle-div').find('.update-style').click();
+    }
+});
+
+$('#report').on('keyup','.filter-val input, input.filter-val', function(){
+  if (event.keyCode === 13) {
+        $(this).closest('.filter-div').find('.update-fil-common').click();
     }
 });
 
