@@ -251,7 +251,7 @@ const chartTypes = {
     defaultAgg: 'sum',
     aggCol: 'z',
   },
-  'US State plotly map':{
+  'US State map':{
     engine:'plotly',
     attr: {
       type: 'choropleth',
@@ -265,7 +265,7 @@ const chartTypes = {
       geo: {scope:'usa'},
     }
   },
-  'lat/lon/dot plotly map':{
+  'lat/lon/size dot map':{
     engine:'plotly',
     attr: {
       type: 'scattermapbox',
@@ -281,7 +281,7 @@ const chartTypes = {
       mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
     }
   },
-  'lat/lon/dot plotly map (continuous color)':{
+  'lat/lon/size dot map (continuous color)':{
     engine:'plotly',
     attr: {
       type: 'scattermapbox',
@@ -297,7 +297,7 @@ const chartTypes = {
       mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
     }
   },
-  'lat/lon/area plotly map':{
+  'lat/lon/area map':{
     engine:'plotly',
     attr: {
       type: 'scattermapbox',
@@ -513,7 +513,7 @@ const customStyle = {
   'Colorscale': {
     type: 'data',
     path: ['marker','colorscale'],
-    tooltip: `For plotly lat/lon (continuous color) maps. e.g. Blackbody, Bluered, Blues,
+    tooltip: `For continuous color maps. e.g. Blackbody, Bluered, Blues,
               Cividis, Earth, Electric, Greens, Greys, Hot, Jet, Picnic, Portland, Rainbow,
               RdBu, Reds, Viridis, YlGnBu, YlOrRd`,
   },
@@ -1287,8 +1287,8 @@ function updateChart(dash_idx, chart_idx){
         //Add the plotly traces (what we call "subtraces")
         let seriesVals = []; //As we go, we'll add unique elements to seriesVals, and if they already exist, showLegend will be false.
         for(const [j, ser] of subtrace_data.entries()){
-          if(trace_config.type == 'lat/lon/area plotly map'){
-            //If this is a lat/lon/area plotly map, we need to find the bounding box and draw it.
+          if(trace_config.type == 'lat/lon/area map'){
+            //If this is a lat/lon/area map, we need to find the bounding box and draw it.
             //This expands the lat and lon arrays, and we'll also expand the other arrays to match.
             const new_ser = {};
             const nonLatLons = [];
