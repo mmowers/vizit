@@ -316,6 +316,23 @@ const chartTypes = {
       showlegend: true,
     }
   },
+  'lat/lon/width line map':{
+    engine:'plotly',
+    attr: {
+      type: 'scattermapbox',
+      mode: 'lines',
+    },
+    wdgTypes: ['lat_start','lon_start','lat_end','lon_end','name','line_width','text'],
+    required:['lat_start','lon_start','lat_end','lon_end'],
+    defaultAgg: 'none',
+    aggCol: 'none',
+    layout:{
+      width: 800,
+      height: 400,
+      dragmode: 'zoom',
+      mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
+    }
+  },
 };
 
 //Every chart can have explode
@@ -337,10 +354,14 @@ const wdgTypes = {
   radius: 'Radius (m)',
   area: 'Area (sq_km)',
   marker_size: 'Marker Size',
+  line_width: 'Line Width',
   marker_color: 'Color',
   lat: 'Latitude',
-  lng: 'Longitude',
   lon: 'Longitude',
+  lat_start: 'Latitude Start',
+  lon_start: 'Longitude Start',
+  lat_end: 'Latitude End',
+  lon_end: 'Longitude End',
   row: 'Facet Rows',
   col: 'Facet Columns',
   explode: 'Explode',
@@ -508,7 +529,7 @@ const customStyle = {
   },
   'Opacity (0-1)': {
     type: 'data',
-    path: ['marker','opacity'],
+    path: ['opacity'],
   },
   'Colorscale': {
     type: 'data',
@@ -1300,13 +1321,13 @@ function updateChart(dash_idx, chart_idx){
                 }
               }
             }
-            for(let i = 0; i < ser.lat.length; i++){
-              const bb = getBoundingBox(ser.lat[i], ser.lon[i], ser.area[i]**0.5/2);
-              new_ser.lat.push(ser.lat[i], null, bb.lat_max, bb.lat_min, bb.lat_min, bb.lat_max, bb.lat_max, null);
-              new_ser.lon.push(ser.lon[i], null, bb.lon_min, bb.lon_min, bb.lon_max, bb.lon_max, bb.lon_min, null);
+            for(let j = 0; j < ser.lat.length; j++){
+              const bb = getBoundingBox(ser.lat[j], ser.lon[j], ser.area[j]**0.5/2);
+              new_ser.lat.push(ser.lat[j], null, bb.lat_max, bb.lat_min, bb.lat_min, bb.lat_max, bb.lat_max, null);
+              new_ser.lon.push(ser.lon[j], null, bb.lon_min, bb.lon_min, bb.lon_max, bb.lon_max, bb.lon_min, null);
               //for all other properties, simply copy values.
               for(const prop of nonLatLons){
-                const serProp = ser[prop][i];
+                const serProp = ser[prop][j];
                 new_ser[prop].push(serProp, null, serProp, serProp, serProp, serProp, serProp, null);
               }
             }
@@ -1374,6 +1395,10 @@ function updateChart(dash_idx, chart_idx){
               updateObj(ser, ['marker','color'], globalColors[sepWdgUniques.name.indexOf(ser.name)]);
               updateObj(ser, ['line','color'], globalColors[sepWdgUniques.name.indexOf(ser.name)]);
             }
+          } else{
+            ser.name = `Data ${i}`;
+            updateObj(ser, ['marker','color'], globalColors[i]);
+            updateObj(ser, ['line','color'], globalColors[i]);
           }
           ser.legendgroup = ser.name;
           if(seriesVals.includes(ser.name)){
@@ -1433,7 +1458,43 @@ function updateChart(dash_idx, chart_idx){
               }
             }
           }
-          plotlyData.push(ser);
+          if(trace_config.type == 'lat/lon/width line map'){
+            const lat_start=ser.lat_start, lat_end=ser.lat_end, lon_start=ser.lon_start, lon_end=ser.lon_end;
+            let ser_copy = JSON.parse(JSON.stringify(ser));
+            //Remove properties so that it is lighter to copy in for loop below.
+            delete ser_copy.lat_start;
+            delete ser_copy.lat_end;
+            delete ser_copy.lon_start;
+            delete ser_copy.lon_end;
+            let line_width;
+            if('line_width' in trace_config){
+              let line_width_max = Math.max(...chart_data[i].aggData[trace_config.line_width]);
+              line_width = ser_copy.line_width.map(i => i / line_width_max*10);
+              delete ser_copy.line_width;
+            }
+            let hover_txt;
+            if('text' in trace_config){
+              hover_txt = ser_copy.text;
+              delete ser_copy.text;
+            }
+            for(let j = 0; j<ser.lat_start.length; j++){
+              let ser_ln_cp = JSON.parse(JSON.stringify(ser_copy));
+              ser_ln_cp.lat = [lat_start[j], lat_end[j]];
+              ser_ln_cp.lon = [lon_start[j], lon_end[j]];
+              if('line_width' in trace_config){
+                updateObj(ser_ln_cp, ['line','width'], line_width[j]);
+              }
+              if('text' in trace_config){
+                ser_ln_cp.text = hover_txt[j];
+              }
+              if(j > 0){
+                ser_ln_cp.showlegend = false;
+              }
+              plotlyData.push(ser_ln_cp);
+            }
+          }else{
+            plotlyData.push(ser);
+          }
         }
       }
 
