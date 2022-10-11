@@ -319,6 +319,24 @@ const chartTypes = {
   'lat/lon/width line map':{
     engine:'plotly',
     attr: {
+      type: 'scattergeo',
+      mode: 'lines',
+    },
+    wdgTypes: ['lat_start','lon_start','lat_end','lon_end','name','line_width','text'],
+    required:['lat_start','lon_start','lat_end','lon_end'],
+    defaultAgg: 'none',
+    aggCol: 'none',
+    layout:{
+      width: 500,
+      height: 250,
+      geo:{ //https://plotly.com/javascript/reference/layout/geo/
+        scope: 'usa',
+      }
+    }
+  },
+  'lat/lon/width line map (mapbox)':{
+    engine:'plotly',
+    attr: {
       type: 'scattermapbox',
       mode: 'lines',
     },
@@ -1458,7 +1476,7 @@ function updateChart(dash_idx, chart_idx){
               }
             }
           }
-          if(trace_config.type == 'lat/lon/width line map'){
+          if(trace_config.type.startsWith('lat/lon/width line map')){
             const lat_start=ser.lat_start, lat_end=ser.lat_end, lon_start=ser.lon_start, lon_end=ser.lon_end;
             let ser_copy = JSON.parse(JSON.stringify(ser));
             //Remove properties so that it is lighter to copy in for loop below.
