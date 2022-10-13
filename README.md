@@ -1,4 +1,4 @@
 # Vizit
-Rapid data visualization, dashboards and reports.
+Rapid data visualization, charts, maps, dashboards and reports.
 
 Use it here: https://mmowers.github.io/vizit/
