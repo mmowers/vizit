@@ -1,4 +1,4 @@
-# vizit
-Visualize data in html with client-side JavaScript
+# Vizit
+Rapid data visualization, dashboards and reports.
 
 Use it here: https://mmowers.github.io/vizit/
