@@ -1415,8 +1415,10 @@ function updateChart(dash_idx, chart_idx){
             }
           } else{
             ser.name = `Data ${i}`;
-            updateObj(ser, ['marker','color'], globalColors[i]);
-            updateObj(ser, ['line','color'], globalColors[i]);
+            if(!('marker_color' in trace_config)){
+              updateObj(ser, ['marker','color'], globalColors[i]);
+              updateObj(ser, ['line','color'], globalColors[i]);
+            }
           }
           ser.legendgroup = ser.name;
           if(seriesVals.includes(ser.name)){
