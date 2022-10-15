@@ -2,7 +2,12 @@
 <html>
 <head>
 <title>Vizit: Rapid data visualization</title>
+<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
 <style>
+body {
+  font-family: "Open Sans", sans-serif;
+  font-size: 0.9em;
+}
 label {
   font-weight: bold;
 }
@@ -94,7 +99,7 @@ text.js-plot-link-container{
 }
 .tooltip-parent{
   position: relative;
-  color: #0088cc;
+  color: coral;
 }
 .tooltip{
   display: none;
@@ -107,6 +112,7 @@ text.js-plot-link-container{
   z-index: 1;
   top: 7px;
   left: 7px;
+  font-weight: normal;
 }
 .tooltip-parent:hover .tooltip {
   display: block;
@@ -121,9 +127,12 @@ text.js-plot-link-container{
 <a style="position: absolute; top: 10px; right: 20px; z-index:100;" href="https://github.com/mmowers/vizit" target="_blank">Vizit GitHub</a>
 <span id="data-sources-label">Data sources / config:
   <span class="tooltip-parent">
-    ?
+    (?)
     <span class="tooltip">
-      Only CSV and JSON files are currently allowed
+      Only csv and json files are currently allowed, including an optional vizit
+      configuration json file (with filename that must end with "vizit-config.json").
+      when loading a json configuration file, all required data files must also be loaded before
+      charts are rendered.
     </span>
   </span>
 </span>
@@ -131,11 +140,19 @@ text.js-plot-link-container{
 <div id="data-sources">
   <input type="file" id="file-input" name="file-input" multiple="multiple">
   <ul id="file-list">(no files selected)</ul>
-  <input id="url-input" type="text" placeholder="URL to csv">
+  <input id="url-input" type="text" placeholder="URL to csv/json">
   <button id="add-url-input">Load</button>
 </div>
 <div id="report">
-  <div id="global-config-header">Global Config</div>
+  <div id="global-config-header">Global Styles and Filters
+    <span class="tooltip-parent">
+      (?)
+      <span class="tooltip">
+        Add a global styling file and set global filters that will apply
+        to all charts, unless overridden in specific chart configuration.
+      </span>
+    </span>
+  </div>
   <div id="global-config">
     <div id="global-style-config">
       Styling file:
@@ -143,7 +160,7 @@ text.js-plot-link-container{
         <option value="none">none</option>
       </select>
       <span class="tooltip-parent">
-        ?
+        (?)
         <span class="tooltip">
           This file must have three columns named 'column_name', 'column_value', and 'color'. The order
           of the rows will eventually determine the order of display, but this hasn't yet been added.
@@ -158,9 +175,42 @@ text.js-plot-link-container{
   </div>
   <button class="add-dashboard">Add Dashboard</button>
 </div>
-<div><span id="download-html">Download HTML</span></div>
-<div><span id="download-json">Download config JSON</span></div>
-<div><span id="config-url">Open config URL</span></div>
+<div>
+  <span id="download-html">
+    Download vizit.html
+    <span class="tooltip-parent">
+      (?)
+      <span class="tooltip">
+        Download html file with current chart configuration, all raw data, and full vizit functionality embedded.
+      </span>
+    </span>
+  </span>
+</div>
+<div>
+  <span id="download-json">
+    Download vizit-config.json
+    <span class="tooltip-parent">
+      (?)
+      <span class="tooltip">
+        Download json configuration file with current chart configuration.
+        When imported along with the other data files, the current charts will be rendered.
+      </span>
+    </span>
+  </span>
+</div>
+<div>
+  <span id="config-url">
+    Open config URL
+    <span class="tooltip-parent">
+      (?)
+      <span class="tooltip">
+        This will produce and open a URL with configuration embedded in the URL itself.
+        This is only useful if all data sources are URLs themselves, but in that case the
+        produced URL will be all that is required to load this vizit report.
+      </span>
+    </span>
+  </span>
+</div>
 
 <script>
 'use strict';
@@ -251,7 +301,7 @@ const chartTypes = {
     defaultAgg: 'sum',
     aggCol: 'z',
   },
-  'US State map':{
+  'US state map (continuous color)':{
     engine:'plotly',
     attr: {
       type: 'choropleth',
@@ -607,8 +657,8 @@ $('#file-input').change(function(evt){
       $(`#file-list li[data-name="${newFiles[i].name}"]`).remove();
       delete files[newFiles[i].name];
     }
-    //If this is a json file, we will save it in config_load_json_file and load
-    if(newFiles[i].name.endsWith('.json')){
+    //If this is a config json file, we will save it in config_load_json_file and load
+    if(newFiles[i].name.endsWith('vizit-config.json')){
       const reader = new FileReader();
       reader.onload = function(evt) {
         config_load = JSON.parse(evt.target.result);
@@ -1059,7 +1109,7 @@ $('#report').on('change','.add-style', function(){
     <div class="style-outer">
       <label class="style-name">${$(this).val()}</label>
       <input class="style-input" type="text">
-      <span class="tooltip-parent">?<span class="tooltip">${customStyle[$(this).val()].tooltip}</span></span>
+      <span class="tooltip-parent">(?)<span class="tooltip">${customStyle[$(this).val()].tooltip}</span></span>
     </div>
   `;
   $(this).before(html);
@@ -1682,7 +1732,7 @@ $('#download-json').click(function(){
   let content = "data:text/json;charset=utf-8," + JSON.stringify(config, null, 2);
   const link = document.createElement("a");
   link.setAttribute("href", content);
-  link.setAttribute("download", "config.json");
+  link.setAttribute("download", "vizit-config.json");
   document.body.appendChild(link); // Required for FF
   link.click();
   document.body.removeChild(link);
