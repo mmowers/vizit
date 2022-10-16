@@ -14,7 +14,6 @@ label {
 select{
   display:block;
 }
-.dashboard-title,
 .chart-title,
 .trace-title{
   font-weight: bold;
@@ -24,6 +23,29 @@ select{
 .chart-outer,
 .trace-controls{
   margin-bottom:5px;
+}
+.dashboard-title-descr-outer{
+  text-align: center;
+  margin-top: 20px;
+}
+.dashboard-title,
+.dashboard-descr{
+  margin: auto;
+  padding-bottom: 10px;
+  max-width: 800px;
+}
+.dashboard-title-descr-edit{
+  display: none;
+  max-width: 800px;
+  margin: auto;
+}
+.dashboard-title-descr-outer:hover .dashboard-title-descr-edit{
+  display:block;
+  position:absolute;
+  background-color: white;
+  left: 0;
+  right: 0;
+  z-index: 10;
 }
 .add-dashboard,
 .add-chart,
@@ -744,15 +766,34 @@ $('#report').on('click','.add-dashboard', function(){
   traceData[dash_idx] = [];
   $(this).before(`
     <div data-dashboardID="${dash_idx}" class="dashboard-outer">
-      <div class="dashboard-title">Dashboard ${dash_idx}</div>
+      <div class="dashboard-title-descr-outer">
+        <div class="dashboard-title-descr">
+          <h2 class="dashboard-title">Dashboard ${dash_idx}</h2>
+          <p class="dashboard-descr"></p>
+        </div>
+        <div class="dashboard-title-descr-edit">
+          <input type="text" class="dashboard-title-edit" placeholder="Edit dashboard title"><br>
+          <textarea class="dashboard-descr-edit" placeholder="Edit dashboard description"></textarea><br>
+          <button class="dashboard-update-title-descr">Update title/description</button>
+        </div>
+      </div>
       <button class="add-chart">Add Chart</button>
     </div>
   `);
   //Automatically click to add the first chart
   $(`[data-dashboardID="${dash_idx}"] .add-chart`).click();
 });
+$('#report').on('click', '.dashboard-update-title-descr', function(){
+  let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
+  let title = $(this).siblings('.dashboard-title-edit').val();
+  let description = $(this).siblings('.dashboard-descr-edit').val().replace(/(\r\n|\r|\n)/g, '<br>');
+  config.dashboards[dash_idx].title = title;
+  config.dashboards[dash_idx].description = description;
+  $(this).closest('.dashboard-title-descr-outer').find('.dashboard-title').html(title);
+  $(this).closest('.dashboard-title-descr-outer').find('.dashboard-descr').html(description);
+});
 $('#report').on('click','.add-chart', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
+  let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
   let chart_idx = config.dashboards[dash_idx].charts.length;
   config.dashboards[dash_idx].charts[chart_idx] = {traces:[]};
   traceData[dash_idx][chart_idx] = [];
@@ -781,8 +822,8 @@ $('#report').on('click','.add-chart', function(){
 });
 
 $('#report').on('click','.add-trace', function(){
-  let dash_idx = parseInt($(this).parents('.dashboard-outer').attr('data-dashboardID'));
-  let chart_idx = parseInt($(this).parents('.chart-outer').attr('data-chartID'));
+  let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
+  let chart_idx = parseInt($(this).closest('.chart-outer').attr('data-chartID'));
   let trace_idx = config.dashboards[dash_idx].charts[chart_idx].traces.length;
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx] = {};
   traceData[dash_idx][chart_idx][trace_idx] = {};
@@ -1612,15 +1653,15 @@ function updateObj(obj, keys, value){
 }
 
 function get_idx(that){
-  let dash_idx = parseInt($(that).parents('.dashboard-outer').attr('data-dashboardID'));
-  let chart_idx = parseInt($(that).parents('.chart-outer').attr('data-chartID'));
-  let trace_idx = parseInt($(that).parents('.trace-controls').attr('data-traceID'));
+  let dash_idx = parseInt($(that).closest('.dashboard-outer').attr('data-dashboardID'));
+  let chart_idx = parseInt($(that).closest('.chart-outer').attr('data-chartID'));
+  let trace_idx = parseInt($(that).closest('.trace-controls').attr('data-traceID'));
   return [dash_idx, chart_idx, trace_idx];
 }
 
 function get_chart_idx(that){
-  let dash_idx = parseInt($(that).parents('.dashboard-outer').attr('data-dashboardID'));
-  let chart_idx = parseInt($(that).parents('.chart-outer').attr('data-chartID'));
+  let dash_idx = parseInt($(that).closest('.dashboard-outer').attr('data-dashboardID'));
+  let chart_idx = parseInt($(that).closest('.chart-outer').attr('data-chartID'));
   return [dash_idx, chart_idx];
 }
 
@@ -1774,6 +1815,17 @@ function load_config(){
   //Now all dashboard, chart, and trace config.
   config_load.dashboards.forEach((db, di) => {
     $('.add-dashboard').click();
+    //Configure title and description of dashboard
+    if('title' in db || 'description' in db){
+      if('title' in db){
+        $(`[data-dashboardID="${di}"] .dashboard-title-edit`).val(db.title);
+      }
+      if('description' in db){
+        $(`[data-dashboardID="${di}"] .dashboard-descr-edit`).val(db.description);
+      }
+      $(`[data-dashboardID="${di}"] .dashboard-update-title-descr`).click();
+    }
+    //Configure charts
     db.charts.forEach((cht, ci) => {
       if(ci > 0){ //The first one is clicked automatically
         $(`[data-dashboardID="${di}"] .add-chart`).click();
