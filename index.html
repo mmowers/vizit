@@ -1175,7 +1175,7 @@ $('#report').on('keyup','.style-input', function(){
     }
 });
 
-$('#report').on('keyup','.filter-val input, input.filter-val', function(){
+$('body').on('keyup','.filter-val input, input.filter-val', function(){
   if (event.keyCode === 13) {
         $(this).closest('.filter-div').find('.update-fil-common').click();
     }
@@ -1195,7 +1195,7 @@ $('#report').on('click','.chartstyle-div .update-style', function(){
   }
 });
 
-$('#report').on('click','.filters-label, .styles-label, .filter-name, .trace-title', function(){
+$('body').on('click','.filters-label, .styles-label, .filter-name, .trace-title', function(){
   $(this).siblings().toggle();
 });
 
