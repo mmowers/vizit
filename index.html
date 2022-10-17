@@ -87,6 +87,7 @@ select{
 .filter-name,
 .trace-title,
 #download-html,
+#download-html-no-controls,
 #download-json,
 #config-url{
   color: #0088cc;
@@ -139,6 +140,7 @@ text.js-plot-link-container{
 .tooltip-parent:hover .tooltip {
   display: block;
 }
+/*no-controls-placeholder*/
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
@@ -147,25 +149,25 @@ text.js-plot-link-container{
 </head>
 <body>
 <a style="position: absolute; top: 10px; right: 20px; z-index:100;" href="https://github.com/mmowers/vizit" target="_blank">Vizit GitHub</a>
-<span id="data-sources-label">Data sources / config:
-  <span class="tooltip-parent">
-    (?)
-    <span class="tooltip">
-      Only csv and json files are currently allowed, including an optional vizit
-      configuration json file (with filename that must end with "vizit-config.json").
-      when loading a json configuration file, all required data files must also be loaded before
-      charts are rendered.
+<div id="top-controls">
+  <span id="data-sources-label">Data sources / config:
+    <span class="tooltip-parent">
+      (?)
+      <span class="tooltip">
+        Only csv and json files are currently allowed, including an optional vizit
+        configuration json file (with filename that must end with "vizit-config.json").
+        when loading a json configuration file, all required data files must also be loaded before
+        charts are rendered.
+      </span>
     </span>
   </span>
-</span>
-<br>
-<div id="data-sources">
-  <input type="file" id="file-input" name="file-input" multiple="multiple">
-  <ul id="file-list">(no files selected)</ul>
-  <input id="url-input" type="text" placeholder="URL to csv">
-  <button id="add-url-input">Load</button>
-</div>
-<div id="report">
+  <br>
+  <div id="data-sources">
+    <input type="file" id="file-input" name="file-input" multiple="multiple">
+    <ul id="file-list">(no files selected)</ul>
+    <input id="url-input" type="text" placeholder="URL to csv">
+    <button id="add-url-input">Load</button>
+  </div>
   <div id="global-config-header">Global Styles and Filters
     <span class="tooltip-parent">
       (?)
@@ -195,9 +197,11 @@ text.js-plot-link-container{
       <button id="update-global-filter" class="update-fil-common">Update Filters</button>
     </div>
   </div>
+</div>
+<div id="report">
   <button class="add-dashboard">Add Dashboard</button>
 </div>
-<div>
+<div id="bottom-controls">
   <span id="download-html">
     Download vizit.html
     <span class="tooltip-parent">
@@ -207,8 +211,17 @@ text.js-plot-link-container{
       </span>
     </span>
   </span>
-</div>
-<div>
+  <br>
+  <span id="download-html-no-controls">
+    Download vizit.html without controls
+    <span class="tooltip-parent">
+      (?)
+      <span class="tooltip">
+        Download html file with current chart configuration, but hide controls.
+      </span>
+    </span>
+  </span>
+  <br>
   <span id="download-json">
     Download vizit-config.json
     <span class="tooltip-parent">
@@ -219,8 +232,7 @@ text.js-plot-link-container{
       </span>
     </span>
   </span>
-</div>
-<div>
+  <br>
   <span id="config-url">
     Open config URL
     <span class="tooltip-parent">
@@ -1012,7 +1024,7 @@ $('#report').on('change','.add-filter', function(){
   $(this).val('none');
 });
 
-$('#report').on('change','.filter-type', function(){
+$('body').on('change','.filter-type', function(){
   //If we have filter-val, remove it.
   $(this).next('.filter-val').remove();
   if($(this).val() == 'none'){
@@ -1046,7 +1058,7 @@ $('#report').on('change','.filter-type', function(){
   }
 });
 
-$('#report').on('click','.select-all, .select-none', function(){
+$('body').on('click','.select-all, .select-none', function(){
   const all_bool = $(this).attr('class').includes('select-all');
   $(this).parent().next().find('input').prop('checked',all_bool);
 });
@@ -1755,12 +1767,26 @@ function getBoundingBox(lat_deg, lon_deg, dist_km){
     lon_max: max_lon_rad * RAD2DEG,
   };
 }
-$('#download-html').click(function(){
+$('#download-html, #download-html-no-controls').click(function(){
   var stringifiedConfig = JSON.stringify(config);
   var stringifiedRawData = JSON.stringify(rawData);
   var stringifiedGlobalStyles = JSON.stringify(globalStyles);
   let html_str = orig_html_str.replace(/let config_load = .*;/,`let config_load = ${stringifiedConfig};`)
   html_str = html_str.replace(/const rawData = .*;/,`const rawData = ${stringifiedRawData};`)
+  if(this.id == 'download-html-no-controls'){
+    let newCSS = `
+    #top-controls,
+    #bottom-controls,
+    .add-dashboard,
+    .add-chart,
+    .add-trace,
+    .chart-controls,
+    .dashboard-title-descr-edit{
+      display: none !important;
+    }
+    `;
+    html_str = html_str.replace('/*no-controls-placeholder*/', newCSS)
+  }
   let content = "data:text/html;charset=utf-8," + encodeURIComponent(html_str);
   const link = document.createElement("a");
   link.setAttribute("href", content);
