@@ -992,8 +992,8 @@ function getFilterHTML(column){
       <label class="filter-name">${column}</label>
       <select class="filter-type">
         <option value="none">Filter Type</option>
-        <option value="include">Include Options</option>
-        <option value="exclude">Exclude Options</option>
+        <option value="include">Include options</option>
+        <option value="exclude">Exclude options</option>
         <option value="equals">Equals</option>
         <option value="greater">Greater than</option>
         <option value="greater-or-equal">Greater than or equal to</option>
@@ -1570,6 +1570,9 @@ function updateChart(dash_idx, chart_idx){
             ser.showlegend = false;
           } else{
             seriesVals.push(ser.name);
+            if(!('marker_color' in trace_config)){
+              ser.showlegend = true;
+            }
           }
           for(const prop in chartType['attr']){
             ser[prop] = chartType['attr'][prop];
