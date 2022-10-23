@@ -67,6 +67,12 @@ select{
   display: inline-block;
   margin: 5px;
 }
+.chart-caption{
+  width: 400px;
+  margin: 5px;
+  padding: 5px;
+  font-size: 0.9em;
+}
 .chart-controls{
   min-width: 100%;
 }
@@ -530,6 +536,10 @@ const default_colorbar = {
 //Maybe note which properties are in layout and which will be in the trace itself. Maybe just use schema?
 //But perhaps assume that all trace properties are common across trace types, although some, e.g. 
 const customStyle = {
+  'Chart Caption': {
+    input: 'textarea',
+    tooltip: 'Enter figure caption (html allowed)',
+  },
   'Plot Width (px)': {
     type: 'layout',
     path: ['width'],
@@ -1162,11 +1172,18 @@ $('#report').on('change','.add-style', function(){
   if($(this).val() == 'none'){
     return;
   }
+  let thisStyle = customStyle[$(this).val()];
+  let inputHTML;
+  if('input' in thisStyle && thisStyle.input == 'textarea'){
+    inputHTML = `<textarea class="style-input" rows="1"></textarea>`;
+  } else{
+    inputHTML = `<input class="style-input" type="text">`;
+  }
   let html = `
     <div class="style-outer">
       <label class="style-name">${$(this).val()}</label>
-      <input class="style-input" type="text">
-      <span class="tooltip-parent">(?)<span class="tooltip">${customStyle[$(this).val()].tooltip}</span></span>
+      ${inputHTML}
+      <span class="tooltip-parent">(?)<span class="tooltip">${thisStyle.tooltip}</span></span>
     </div>
   `;
   $(this).before(html);
@@ -1191,7 +1208,7 @@ $('#report').on('click','.chartstyle-div .update-style', function(){
   //Build style config
   chart_config.style={};
   $(this).siblings('.style-outer').each(function(){
-    chart_config.style[$(this).children('label').text()] = $(this).children('input').val();
+    chart_config.style[$(this).children('label').text()] = $(this).children('.style-input').val();
   });
   //Make sure we even have a chart to update and, if so, update the chart.
   if(document.getElementById(`chart-container-dash-${dash_idx}-chart-${chart_idx}`)){
@@ -1384,6 +1401,26 @@ function updateChart(dash_idx, chart_idx){
   const chart_data = JSON.parse(JSON.stringify(traceData[dash_idx][chart_idx]));
   if($(`#chart-container-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
     $(`#dash-${dash_idx}-chart-${chart_idx}`).prepend(`<div id="chart-container-dash-${dash_idx}-chart-${chart_idx}" class="chart-container"></div>`);
+  }
+  //Add styling
+  if('style' in chart_config && 'Move Chart Up/Down (px)' in chart_config.style){
+    $(`#dash-${dash_idx}-chart-${chart_idx}`).css('top',chart_config.style['Move Chart Up/Down (px)'] + 'px');
+  }
+  if('style' in chart_config && 'Move Chart Left/Right (px)' in chart_config.style){
+    $(`#dash-${dash_idx}-chart-${chart_idx}`).css('left',chart_config.style['Move Chart Left/Right (px)'] + 'px');
+  }
+  if('style' in chart_config && 'Z-index' in chart_config.style){
+    $(`#dash-${dash_idx}-chart-${chart_idx}`).css('z-index',chart_config.style['Z-index']);
+  }
+  if('style' in chart_config && 'Chart Caption' in chart_config.style){
+    if($(`#caption-dash-${dash_idx}-chart-${chart_idx}`).length > 0){
+      $(`#caption-dash-${dash_idx}-chart-${chart_idx}`).html(chart_config.style['Chart Caption']);
+    }
+    else{
+      $(`#dash-${dash_idx}-chart-${chart_idx}`).append(`
+        <div id="caption-dash-${dash_idx}-chart-${chart_idx}" class="chart-caption">${chart_config.style['Chart Caption']}</div>
+      `);
+    }
   }
   //Use first trace to figure out if we are exploding.
   let explodes = [null];
@@ -1629,16 +1666,7 @@ function updateChart(dash_idx, chart_idx){
       //Update html element width and height
       $(`#chart-dash-${dash_idx}-chart-${chart_idx}-explode-${ei}`).width(plotlyLayout.width);
       $(`#chart-dash-${dash_idx}-chart-${chart_idx}-explode-${ei}`).height(plotlyLayout.height);
-
-      if('style' in chart_config && 'Move Chart Up/Down (px)' in chart_config['style']){
-        $(`#chart-container-dash-${dash_idx}-chart-${chart_idx}`).css('top',chart_config['style']['Move Chart Up/Down (px)'] + 'px');
-      }
-      if('style' in chart_config && 'Move Chart Left/Right (px)' in chart_config['style']){
-        $(`#chart-container-dash-${dash_idx}-chart-${chart_idx}`).css('left',chart_config['style']['Move Chart Left/Right (px)'] + 'px');
-      }
-      if('style' in chart_config && 'Z-index' in chart_config['style']){
-        $(`#chart-container-dash-${dash_idx}-chart-${chart_idx}`).css('z-index',chart_config['style']['Z-index']);
-      }
+      $(`#caption-dash-${dash_idx}-chart-${chart_idx}`).width(plotlyLayout.width);
       if(chart_data[0].sepWdg.includes('explode')){
         let plot_title_text = explode_val;
         if('style' in chart_config && 'Plot Title' in chart_config.style){
@@ -1866,7 +1894,7 @@ function load_config(){
         $(`#dash-${di}-chart-${ci} .chartstyle-div .styles-label`).click();
         for (const key in cht['style']){
           $(`#dash-${di}-chart-${ci} .chartstyle-div .add-style`).val(key).change();
-          $(`#dash-${di}-chart-${ci} .chartstyle-div .style-outer input`).last().val(cht['style'][key]).change();
+          $(`#dash-${di}-chart-${ci} .chartstyle-div .style-outer .style-input`).last().val(cht['style'][key]).change();
         }
         $(`#dash-${di}-chart-${ci} .chartstyle-div .update-style`).click();
         $(`#dash-${di}-chart-${ci} .chartstyle-div .styles-label`).click();
