@@ -11,8 +11,10 @@ body {
 label {
   font-weight: bold;
 }
+.trace-control,
 select{
   display:block;
+  margin-bottom:5px;
 }
 .chart-title,
 .trace-title{
@@ -104,6 +106,7 @@ select{
   cursor: pointer;
 }
 #data-sources-label{
+  display: block;
   font-weight: bold;
 }
 .add-style,
@@ -171,7 +174,6 @@ text.js-plot-link-container{
       </span>
     </span>
   </span>
-  <br>
   <div id="data-sources">
     <input type="file" id="file-input" name="file-input" multiple="multiple">
     <ul id="file-list">(no files selected)</ul>
@@ -359,6 +361,42 @@ const chartTypes = {
       geo: {scope:'usa'},
     }
   },
+  'custom region map':{
+    engine:'plotly',
+    attr: {
+      type: 'choropleth',
+    },
+    customIn: {
+      geojson: {
+        label: 'GeoJSON URL',
+        type: 'text',
+        tooltip: 'Enter a URL to a geoJSON file defining the regions in the data source.'
+      },
+      featureidkey: {
+        label: 'GeoJSON region key',
+        type: 'text',
+        tooltip: `Enter the key in the geojson file that matches the regions in the data file. Supports nested property, e.g. "properties.name".
+                  If empty, the default is "id".`
+      },
+    },
+    wdgTypes: ['locations','z','text'],
+    required:['geojson','locations','z'],
+    customWdgLabels: {
+      z: 'Color'
+    },
+    defaultAgg: 'sum',
+    aggCol: 'z',
+    layout:{
+      width: 800,
+      height: 400,
+      geo: {
+        fitbounds: 'locations',
+        projection:{
+          type: 'mercator',
+        }
+      },
+    }
+  },
   'lat/lon/size dot map':{
     engine:'plotly',
     attr: {
@@ -447,6 +485,13 @@ const chartTypes = {
   },
 };
 
+chartTypes['custom region map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['custom region map']));
+chartTypes['custom region map (mapbox)'].attr.type = 'choroplethmapbox';
+chartTypes['custom region map (mapbox)'].layout = {
+  width: 800,
+  height: 400,
+  mapbox: {style: 'carto-positron'},
+};
 //Every chart can have explode
 for(const k in chartTypes){
   if('wdgTypes' in chartTypes[k]){
@@ -456,12 +501,12 @@ for(const k in chartTypes){
 
 const sepTraceWdg = ['name','row','col','explode']; //These widgets, if set, will create separate subtraces
 
-const wdgTypes = {
+const defaultWdgLabels = {
   x: 'X axis',
   y: 'Y axis',
   z: 'Z axis',
   name: 'Color',
-  locations: 'State Codes',
+  locations: 'Locations',
   text: 'Hover Text',
   radius: 'Radius (m)',
   area: 'Area (sq_km)',
@@ -913,25 +958,46 @@ $('#report').on('change','select[data-config="type"]', function(){
 });
 
 function buildTraceControls(thisTraceDiv, selectFile, chartType){
-  let header = Object.keys(rawData[selectFile]).sort();
   thisTraceDiv.children('.trace-ind-controls').remove();
+  let wdgHtml = ``;
+
+  //Add custom widgets
+  if ('customIn' in chartTypes[chartType]){
+    for(const [key,wdg] of Object.entries(chartTypes[chartType].customIn)){
+      wdgHtml += `<label>${wdg.label} `;
+      if('tooltip' in wdg){
+        wdgHtml += `<span class="tooltip-parent">(?)<span class="tooltip">${wdg.tooltip}</span></span>`
+      }
+      wdgHtml += `</label>`;
+      if(wdg.type == 'text'){
+        wdgHtml += `<input class="trace-control" data-config="${key}" type="text">`;
+      }
+    }
+  }
+  //Build options for general column-select widgets
+  let header = Object.keys(rawData[selectFile]).sort();
   let optionsHtml = '';
   for (const col of header){
     optionsHtml+= `<option value="${col}">${col}</option>`;
   }
   //Add controls for x axis, y axis, color, style, row, column
   const wdgOptionsHtml = `<option value="none">none</option>` + optionsHtml;
-  let wdgHtml = ``;
   for (const wdgType of chartTypes[chartType].wdgTypes){
+    let wdgLabel;
+    if('customWdgLabels' in chartTypes[chartType] && wdgType in chartTypes[chartType].customWdgLabels){
+      wdgLabel = chartTypes[chartType].customWdgLabels[wdgType];
+    } else{
+      wdgLabel = defaultWdgLabels[wdgType]
+    }
     wdgHtml += `
-      <label>${wdgTypes[wdgType]}</label>
-      <select data-config="${wdgType}">${wdgOptionsHtml}</select>
+      <label>${wdgLabel}</label>
+      <select class= "trace-control" data-config="${wdgType}">${wdgOptionsHtml}</select>
     `;
   }
   //Add aggregation
   wdgHtml += `
     <label>Aggregation</label>
-    <select class="agg" data-config="agg">
+    <select class="agg trace-control" data-config="agg">
       <option value="none">none</option>
       <option value="sum">Sum</option>
     </select>
@@ -951,7 +1017,7 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
   thisTraceDiv.find('.agg').val(chartTypes[chartType].defaultAgg);
 }
 
-$('#report').on('change','.trace-ind-controls > select', function(){
+$('#report').on('change','.trace-control', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
   let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
@@ -1570,7 +1636,8 @@ function updateChart(dash_idx, chart_idx){
             ser.showlegend = false;
           } else{
             seriesVals.push(ser.name);
-            if(!('marker_color' in trace_config)){
+            if(!('marker_color' in trace_config) &&
+               !(trace_config.type.startsWith('custom region map'))){
               ser.showlegend = true;
             }
           }
@@ -1624,6 +1691,14 @@ function updateChart(dash_idx, chart_idx){
                 if(!('range' in plotlyLayout[layoutYaxis])) plotlyLayout[layoutYaxis].range = [null,null];
                 plotlyLayout.yaxis.range[1] = Number(propVal);
               }
+            }
+          }
+          if(trace_config.type.startsWith('custom region map')){
+            ser.geojson = trace_config.geojson;
+            if('featureidkey' in trace_config){
+              ser.featureidkey = trace_config.featureidkey;
+            } else{
+              ser.featureidkey = "id";
             }
           }
           if(trace_config.type.startsWith('lat/lon/width line map')){
