@@ -1135,7 +1135,7 @@ $('body').on('change','.filter-type', function(){
           uniques = uniques.concat(rawData[fileName][filterName])
         }
       }
-      uniques = [...new Set(uniques)];
+      uniques = [...new Set(uniques)].sort();
     } else{
       const [dash_idx, chart_idx, trace_idx] = get_idx(this);
       const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
