@@ -204,7 +204,7 @@ text.js-plot-link-container{
       </span>
     </div>
     <div id="global-filter-config" class="filter-div">
-      Add Filters:
+      Filters:
       <select id="add-global-filter"><option value="none">Add Filter</option></select>
       <button id="update-global-filter" class="update-fil-common">Update Filters</button>
     </div>
@@ -1006,7 +1006,7 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
   const filtOptionsHtml = `<option value="none">Add Filter</option>` + optionsHtml;
   wdgHtml += `
     <div class="filter-div">
-      <label class="filters-label">Add Filters</label>
+      <label class="filters-label">Filters</label>
       <select class="add-filter">${filtOptionsHtml}</select>
       <button class="update-filter update-fil-common">Update Filters</button>
     </div>
@@ -1058,6 +1058,7 @@ function getFilterHTML(column){
       <label class="filter-name">${column}</label>
       <select class="filter-type">
         <option value="none">Filter Type</option>
+        <option value="select">Select</option>
         <option value="include">Include options</option>
         <option value="exclude">Exclude options</option>
         <option value="equals">Equals</option>
@@ -1065,9 +1066,18 @@ function getFilterHTML(column){
         <option value="greater-or-equal">Greater than or equal to</option>
         <option value="less">Less than</option>
         <option value="less-or-equal">Less than or equal to</option>
-        <option value="between-inclusive">Between (inclusive)</option>
+        <option value="between-inclusive">Between (comma-separated)</option>
       </select>
     </div>`;
+}
+
+function getFilterSelect(uniques){
+  let html = `<select class="filter-val filter-val-select"><option value="none">none</option>`;
+  for (let i = 0; i < uniques.length; i++){
+    html += `<option value="${i}">${uniques[i]}</option>`;
+  }
+  html += `</select>`;
+  return html;
 }
 
 function getFilterCheckBox(uniques){
@@ -1114,7 +1124,7 @@ $('body').on('change','.filter-type', function(){
     }
     return;
   }
-  if(['include','exclude'].includes($(this).val())){
+  if(['include','exclude','select'].includes($(this).val())){
     const filterName = $(this).siblings('.filter-name').text();
     let uniques = [];
     if($(this).closest('#global-filter-config').length > 0){
@@ -1129,9 +1139,14 @@ $('body').on('change','.filter-type', function(){
     } else{
       const [dash_idx, chart_idx, trace_idx] = get_idx(this);
       const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-      uniques = [... new Set(rawData[trace_config.dataSource][filterName])]; //maybe uniques should be evaluated and saved earlier...
+      uniques = [... new Set(rawData[trace_config.dataSource][filterName])].sort(); //maybe uniques should be evaluated and saved earlier...
     }
-    let html = getFilterCheckBox(uniques);
+    let html;
+    if(['include','exclude'].includes($(this).val())){
+      html = getFilterCheckBox(uniques);
+    } else if($(this).val() == 'select'){
+      html = getFilterSelect(uniques);
+    }
     $(this).after(html);
   } else{
     $(this).after(`<input class="filter-val filter-val-text" type="text">`);
@@ -1160,6 +1175,9 @@ function getFilterVal(that){
   } else if($(that).find('.filter-val-text').length > 0){
     let textVal = $(that).find('.filter-val-text').val();
     filterVal = textVal == '' ? undefined : textVal;
+  } else if($(that).find('.filter-val-select').length > 0){
+    let selectVal = $(that).find('.filter-val-select option:selected').text();
+    filterVal = selectVal == 'none' ? undefined : selectVal;
   }
   return filterVal;
 }
@@ -1258,14 +1276,18 @@ $('#report').on('change','.add-style', function(){
 
 $('#report').on('keyup','.style-input', function(){
   if (event.keyCode === 13) {
-        $(this).closest('.chartstyle-div').find('.update-style').click();
-    }
+    $(this).closest('.chartstyle-div').find('.update-style').click();
+  }
 });
 
 $('body').on('keyup','.filter-val input, input.filter-val', function(){
   if (event.keyCode === 13) {
-        $(this).closest('.filter-div').find('.update-fil-common').click();
-    }
+    $(this).closest('.filter-div').find('.update-fil-common').click();
+  }
+});
+
+$('body').on('change','.filter-val-text, .filter-val-select', function(){
+  $(this).closest('.filter-div').find('.update-fil-common').click();
 });
 
 $('#report').on('click','.chartstyle-div .update-style', function(){
@@ -1350,7 +1372,11 @@ function applyFilters(data_in, filters_in = {}){
     //make sure this row passes all filters
     loop2:
     for(const [col_filt, filt] of filter_entries){
-      if(filt.filter_type == 'include'){
+      if(filt.filter_type == 'select'){
+        if(data_in[col_filt][i] != filt.filter_val){
+          continue loop1;
+        }
+      } else if(filt.filter_type == 'include'){
         if(!filt.filter_val.includes(data_in[col_filt][i])){
           continue loop1;
         }
@@ -1884,9 +1910,17 @@ $('#download-html, #download-html-no-controls').click(function(){
   var stringifiedGlobalStyles = JSON.stringify(globalStyles);
   let html_str = orig_html_str.replace(/let config_load = .*;/,`let config_load = ${stringifiedConfig};`)
   html_str = html_str.replace(/const rawData = .*;/,`const rawData = ${stringifiedRawData};`)
+  //Expose global filters, since when using no-controls the raw data should already be pre-filtered
+  //anyway. Maybe later add the ability to add exposed vs unexposed filters and add an "unexposed" class to
+  //the unexposed filters so that we can hide them here?
   if(this.id == 'download-html-no-controls'){
     let newCSS = `
-    #top-controls,
+    #data-sources-label,
+    #data-sources,
+    #global-config-header,
+    #global-style-config,
+    #add-global-filter,
+    .filter-type,
     #bottom-controls,
     .add-dashboard,
     .add-chart,
@@ -1894,6 +1928,13 @@ $('#download-html, #download-html-no-controls').click(function(){
     .chart-controls,
     .dashboard-title-descr-edit{
       display: none !important;
+    }
+    #global-config{
+      display: block !important;
+    }
+    .filter-div,
+    #global-config{
+      border: none;
     }
     `;
     html_str = html_str.replace('/*no-controls-placeholder*/', newCSS)
@@ -1942,6 +1983,10 @@ function load_config(){
             $(this).children('input').prop( "checked", true );
           }
         });
+      } else if(config_load.filter[key].filter_type == 'select'){
+        $(`#global-filter-config .filter-val`).last().children('option')
+        .filter(function(){return $(this).text() === config_load.filter[key].filter_val;})
+        .prop("selected", true);
       } else {
         $(`#global-filter-config .filter-val`).last().val(config_load.filter[key].filter_val);
       }
@@ -1995,13 +2040,17 @@ function load_config(){
           for (const key in trc['filter']){
             $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .add-filter`).val(key).change();
             $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-type`).last().val(trc['filter'][key]['filter_type']).change();
-            //TODO: If filter type is include or exclude, do the following, else simply fill with value.
+            //If filter type is include or exclude, do the following, else simply fill with value.
             if(['include','exclude'].includes(trc.filter[key].filter_type)){
               $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-val`).last().find('label').each(function(){
                 if(trc['filter'][key]['filter_val'].map(String).includes($(this).text())){ //perhaps map to string in separate step for speed
                   $(this).children('input').prop( "checked", true );
                 }
               });
+            } else if(trc.filter[key].filter_type == 'select'){
+              $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-val`).last().children('option')
+              .filter(function(){return $(this).text() === config_load.filter[key].filter_val;})
+              .prop("selected", true);
             } else{
               $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-val`).last().val(trc.filter[key].filter_val);
             }
