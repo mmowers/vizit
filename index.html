@@ -111,6 +111,7 @@ select{
 .filter-name,
 .trace-title,
 #download-html,
+#download-html-global-filters,
 #download-html-no-controls,
 #download-json,
 #config-url{
@@ -236,6 +237,16 @@ text.js-plot-link-container{
       (?)
       <span class="tooltip">
         Download html file with current chart configuration, all raw data, and full vizit functionality embedded.
+      </span>
+    </span>
+  </span>
+  <br>
+  <span id="download-html-global-filters">
+    Download vizit.html with only global filters
+    <span class="tooltip-parent">
+      (?)
+      <span class="tooltip">
+        Download html file with current chart configuration, but hide everything except global filters.
       </span>
     </span>
   </span>
@@ -1159,9 +1170,14 @@ $('#report').on('change','.add-filter', function(){
   $(this).val('none');
 });
 
-$('#report').on('click','.remove-filter', function(){
+$('body').on('click','.remove-filter', function(){
   let filterName = $(this).siblings('.filter-name').text();
-  let updateButton = $(this).closest('.filter-div').find('.update-filter');
+  let updateButton;
+  if($(this).closest('#global-filter-config').length > 0){
+    updateButton = $(this).closest('.filter-div').find('#update-global-filter');
+  } else{
+    updateButton = $(this).closest('.filter-div').find('.update-filter');
+  }
   $(this).parent('.filter-outer').remove();
   updateButton.click();
 });
@@ -1986,25 +2002,26 @@ function getBoundingBox(lat_deg, lon_deg, dist_km){
     lon_max: max_lon_rad * RAD2DEG,
   };
 }
-$('#download-html, #download-html-no-controls').click(function(){
+$('#download-html, #download-html-global-filters, #download-html-no-controls').click(function(){
   var stringifiedConfig = JSON.stringify(config);
   var stringifiedRawData = JSON.stringify(rawData);
   var stringifiedGlobalStyles = JSON.stringify(globalStyles);
   let html_str = orig_html_str.replace(/let config_load = .*;/,`let config_load = ${stringifiedConfig};`)
   html_str = html_str.replace(/const rawData = .*;/,`const rawData = ${stringifiedRawData};`)
-  //Expose global filters, since when using no-controls the raw data should already be pre-filtered
-  //anyway. Maybe later add the ability to add exposed vs unexposed filters and add an "unexposed" class to
-  //the unexposed filters so that we can hide them here?
-  if(this.id == 'download-html-no-controls'){
+  if(this.id == 'download-html-global-filters'){
     let newCSS = `
     #data-sources-label,
     #data-sources,
     #global-config-header,
     #global-style-config,
     #add-global-filter,
+    #update-global-filter,
+    .filters-label,
     .filter-type,
     #bottom-controls,
     .add-dashboard,
+    .remove-dashboard,
+    .remove-filter,
     .add-chart,
     .add-trace,
     .chart-controls,
@@ -2017,6 +2034,20 @@ $('#download-html, #download-html-no-controls').click(function(){
     .filter-div,
     #global-config{
       border: none;
+    }
+    `;
+    html_str = html_str.replace('/*no-controls-placeholder*/', newCSS)
+  } else if(this.id == 'download-html-no-controls'){
+    let newCSS = `
+    #top-controls,
+    #bottom-controls,
+    .add-dashboard,
+    .remove-dashboard,
+    .add-chart,
+    .add-trace,
+    .chart-controls,
+    .dashboard-title-descr-edit{
+      display: none !important;
     }
     `;
     html_str = html_str.replace('/*no-controls-placeholder*/', newCSS)
