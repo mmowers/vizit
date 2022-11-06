@@ -868,13 +868,13 @@ $('#report').on('click','.add-dashboard', function(){
 });
 
 $('#report').on('click','.remove-dashboard', function(){
-  let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
+  let dash_idx = get_idx(this);
   config.dashboards[dash_idx] = {};
   $(`#dash-${dash_idx}`).remove();
 });
 
 $('#report').on('click', '.dashboard-update-title-descr', function(){
-  let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
+  let dash_idx = get_idx(this);
   let title = $(this).siblings('.dashboard-title-edit').val();
   let description = $(this).siblings('.dashboard-descr-edit').val().replace(/(\r\n|\r|\n)/g, '<br>');
   config.dashboards[dash_idx].title = title;
@@ -884,7 +884,7 @@ $('#report').on('click', '.dashboard-update-title-descr', function(){
 });
 
 $('#report').on('click','.add-chart', function(){
-  let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
+  let dash_idx = get_idx(this);
   let chart_idx = config.dashboards[dash_idx].charts.length;
   config.dashboards[dash_idx].charts[chart_idx] = {traces:[]};
   traceData[dash_idx][chart_idx] = [];
@@ -914,15 +914,13 @@ $('#report').on('click','.add-chart', function(){
 });
 
 $('#report').on('click','.remove-chart', function(){
-  let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
-  let chart_idx = parseInt($(this).closest('.chart-outer').attr('data-chartID'));
+  let [dash_idx, chart_idx] = get_idx(this);
   config.dashboards[dash_idx].charts[chart_idx]= {};
   $(`#dash-${dash_idx}-chart-${chart_idx}`).remove();
 });
 
 $('#report').on('click','.add-trace', function(){
-  let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
-  let chart_idx = parseInt($(this).closest('.chart-outer').attr('data-chartID'));
+  let [dash_idx, chart_idx] = get_idx(this);
   let trace_idx = config.dashboards[dash_idx].charts[chart_idx].traces.length;
   config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx] = {};
   traceData[dash_idx][chart_idx][trace_idx] = {};
@@ -1352,7 +1350,7 @@ $('body').on('load_config_change','.filter-slider-select', function(){
 });
 
 $('#report').on('click','.chartstyle-div .update-style', function(){
-  const [dash_idx, chart_idx] = get_chart_idx(this);
+  const [dash_idx, chart_idx] = get_idx(this);
   const chart_config = config.dashboards[dash_idx].charts[chart_idx];
   //Build style config
   chart_config.style={};
@@ -1864,15 +1862,17 @@ function updateObj(obj, keys, value){
 
 function get_idx(that){
   let dash_idx = parseInt($(that).closest('.dashboard-outer').attr('data-dashboardID'));
-  let chart_idx = parseInt($(that).closest('.chart-outer').attr('data-chartID'));
-  let trace_idx = parseInt($(that).closest('.trace-controls').attr('data-traceID'));
-  return [dash_idx, chart_idx, trace_idx];
-}
-
-function get_chart_idx(that){
-  let dash_idx = parseInt($(that).closest('.dashboard-outer').attr('data-dashboardID'));
-  let chart_idx = parseInt($(that).closest('.chart-outer').attr('data-chartID'));
-  return [dash_idx, chart_idx];
+  if($(that).closest('.chart-outer').length){
+    let chart_idx = parseInt($(that).closest('.chart-outer').attr('data-chartID'));
+    if($(that).closest('.trace-controls').length){
+      let trace_idx = parseInt($(that).closest('.trace-controls').attr('data-traceID'));
+      return [dash_idx, chart_idx, trace_idx];
+    } else{
+      return [dash_idx, chart_idx];
+    }
+  } else{
+    return dash_idx;
+  }
 }
 
 //TODO: should i really have this? Shouldn't i just use transpose below and then shift()?
