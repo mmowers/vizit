@@ -59,6 +59,13 @@ select{
   margin-top: 10px;
   margin-bottom: 10px;
 }
+.remove-dashboard,
+.remove-chart{
+  color: red;
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
 .chart-outer{
   display: inline-block;
   position: relative;
@@ -840,7 +847,7 @@ $('#report').on('click','.add-dashboard', function(){
   config.dashboards[dash_idx] = {charts:[]};
   traceData[dash_idx] = [];
   $(this).before(`
-    <div data-dashboardID="${dash_idx}" class="dashboard-outer">
+    <div id="dash-${dash_idx}" data-dashboardID="${dash_idx}" class="dashboard-outer">
       <div class="dashboard-title-descr-outer">
         <div class="dashboard-title-descr">
           <h2 class="dashboard-title">Dashboard ${dash_idx}</h2>
@@ -853,11 +860,19 @@ $('#report').on('click','.add-dashboard', function(){
         </div>
       </div>
       <button class="add-chart">Add Chart</button>
+      <button class="remove-dashboard">Remove Dashboard</button>
     </div>
   `);
   //Automatically click to add the first chart
   $(`[data-dashboardID="${dash_idx}"] .add-chart`).click();
 });
+
+$('#report').on('click','.remove-dashboard', function(){
+  let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
+  config.dashboards[dash_idx] = {};
+  $(`#dash-${dash_idx}`).remove();
+});
+
 $('#report').on('click', '.dashboard-update-title-descr', function(){
   let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
   let title = $(this).siblings('.dashboard-title-edit').val();
@@ -867,6 +882,7 @@ $('#report').on('click', '.dashboard-update-title-descr', function(){
   $(this).closest('.dashboard-title-descr-outer').find('.dashboard-title').html(title);
   $(this).closest('.dashboard-title-descr-outer').find('.dashboard-descr').html(description);
 });
+
 $('#report').on('click','.add-chart', function(){
   let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
   let chart_idx = config.dashboards[dash_idx].charts.length;
@@ -888,12 +904,20 @@ $('#report').on('click','.add-chart', function(){
           <button class="update-style">Update Styles</button>
         </div>
         <button class="add-trace">Add Data</button>
+        <button class="remove-chart">Remove Chart</button>
       </div>
     </div>
   `;
   $(this).before(html);
   //Automatically click to add the first trace
   $(`#dash-${dash_idx}-chart-${chart_idx} .add-trace`).click();
+});
+
+$('#report').on('click','.remove-chart', function(){
+  let dash_idx = parseInt($(this).closest('.dashboard-outer').attr('data-dashboardID'));
+  let chart_idx = parseInt($(this).closest('.chart-outer').attr('data-chartID'));
+  config.dashboards[dash_idx].charts[chart_idx]= {};
+  $(`#dash-${dash_idx}-chart-${chart_idx}`).remove();
 });
 
 $('#report').on('click','.add-trace', function(){
@@ -907,7 +931,7 @@ $('#report').on('click','.add-trace', function(){
     optionsHtml += `<option value="${fileName}">${fileName}</option>`;
   }
   let html = `
-    <div class="trace-controls" data-traceID="${trace_idx}">
+    <div id="dash-${dash_idx}-chart-${chart_idx}-trace-${trace_idx}" class="trace-controls" data-traceID="${trace_idx}">
       <div class="trace-title">Data ${trace_idx}</div>
       <label>Data source:</label>
       <select class="data-source">${optionsHtml}</select>
@@ -915,6 +939,7 @@ $('#report').on('click','.add-trace', function(){
   `;
   $(this).before(html);
 });
+
 $('#report').on('change','.data-source', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
@@ -2035,7 +2060,11 @@ function load_config(){
   }
   $('#global-config-header').click();
   //Now all dashboard, chart, and trace config.
-  config_load.dashboards.forEach((db, di) => {
+  let di = 0;
+  for(const db of config_load.dashboards){
+    if($.isEmptyObject(db)){
+      continue;
+    }
     $('.add-dashboard').click();
     //Configure title and description of dashboard
     if('title' in db || 'description' in db){
@@ -2048,7 +2077,11 @@ function load_config(){
       $(`[data-dashboardID="${di}"] .dashboard-update-title-descr`).click();
     }
     //Configure charts
-    db.charts.forEach((cht, ci) => {
+    let ci = 0;
+    for(const cht of db.charts){
+      if($.isEmptyObject(cht)){
+        continue;
+      }
       if(ci > 0){ //The first one is clicked automatically
         $(`[data-dashboardID="${di}"] .add-chart`).click();
       }
@@ -2062,7 +2095,11 @@ function load_config(){
         $(`#dash-${di}-chart-${ci} .chartstyle-div .update-style`).click();
         $(`#dash-${di}-chart-${ci} .chartstyle-div .styles-label`).click();
       }
-      cht.traces.forEach((trc, ti) => {
+      let ti = 0;
+      for(const trc of cht.traces){
+        if($.isEmptyObject(trc)){
+          continue;
+        }
         if(ti > 0){ //The first one is clicked automatically
           $(`#dash-${di}-chart-${ci} .add-trace`).click();
         }
@@ -2117,9 +2154,12 @@ function load_config(){
             $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="${key}"`).val(trc[key]).change();
           }
         }
-      });
-    });
-  });
+        ti++;
+      }
+      ci++;
+    }
+    di++;
+  }
 }
 
 //If we have config in the url, retrieve the datasources and set config_load
