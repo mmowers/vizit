@@ -127,6 +127,10 @@ select{
 #update-global-filter{
   display: block;
 }
+.filter-val-slider{
+  width: 400px;
+  max-width: 100%;
+}
 text.js-plot-link-container{
   display:none;
 }
@@ -1059,6 +1063,7 @@ function getFilterHTML(column){
       <select class="filter-type">
         <option value="none">Filter Type</option>
         <option value="select">Select</option>
+        <option value="slider">Slider</option>
         <option value="include">Include options</option>
         <option value="exclude">Exclude options</option>
         <option value="equals">Equals</option>
@@ -1072,11 +1077,23 @@ function getFilterHTML(column){
 }
 
 function getFilterSelect(uniques){
-  let html = `<select class="filter-val filter-val-select"><option value="none">none</option>`;
+  let html = `<select class="filter-val filter-val-select"><option value="0">none</option>`;
   for (let i = 0; i < uniques.length; i++){
-    html += `<option value="${i}">${uniques[i]}</option>`;
+    html += `<option value="${i+1}">${uniques[i]}</option>`;
   }
   html += `</select>`;
+  return html;
+}
+
+function getFilterSlider(uniques){
+  let html = `<div class="filter-val">
+    <input type="range" min="0" value="0" max="${uniques.length}" class="filter-val-slider">`;
+  //We store the actual values in a select
+  html += `<select class="filter-slider-select"><option value="0">none</option>`;
+  for (let i = 0; i < uniques.length; i++){
+    html += `<option value="${i+1}">${uniques[i]}</option>`;
+  }
+  html += `</select></div>`;
   return html;
 }
 
@@ -1124,7 +1141,7 @@ $('body').on('change','.filter-type', function(){
     }
     return;
   }
-  if(['include','exclude','select'].includes($(this).val())){
+  if(['include','exclude','select','slider'].includes($(this).val())){
     const filterName = $(this).siblings('.filter-name').text();
     let uniques = [];
     if($(this).closest('#global-filter-config').length > 0){
@@ -1146,6 +1163,8 @@ $('body').on('change','.filter-type', function(){
       html = getFilterCheckBox(uniques);
     } else if($(this).val() == 'select'){
       html = getFilterSelect(uniques);
+    } else if($(this).val() == 'slider'){
+      html = getFilterSlider(uniques);
     }
     $(this).after(html);
   } else{
@@ -1177,6 +1196,9 @@ function getFilterVal(that){
     filterVal = textVal == '' ? undefined : textVal;
   } else if($(that).find('.filter-val-select').length > 0){
     let selectVal = $(that).find('.filter-val-select option:selected').text();
+    filterVal = selectVal == 'none' ? undefined : selectVal;
+  } else if($(that).find('.filter-val-slider').length > 0){
+    let selectVal = $(that).find('.filter-slider-select option:selected').text();
     filterVal = selectVal == 'none' ? undefined : selectVal;
   }
   return filterVal;
@@ -1290,6 +1312,20 @@ $('body').on('change','.filter-val-text, .filter-val-select', function(){
   $(this).closest('.filter-div').find('.update-fil-common').click();
 });
 
+$('body').on('input','.filter-val-slider', function(){
+  $(this).next('.filter-slider-select').val($(this).val());
+  $(this).closest('.filter-div').find('.update-fil-common').click();
+});
+
+$('body').on('change','.filter-slider-select', function(){
+  $(this).prev('.filter-val-slider').val($(this).val());
+  $(this).closest('.filter-div').find('.update-fil-common').click();
+});
+
+$('body').on('load_config_change','.filter-slider-select', function(){
+  $(this).prev('.filter-val-slider').val($(this).val());
+});
+
 $('#report').on('click','.chartstyle-div .update-style', function(){
   const [dash_idx, chart_idx] = get_chart_idx(this);
   const chart_config = config.dashboards[dash_idx].charts[chart_idx];
@@ -1372,7 +1408,7 @@ function applyFilters(data_in, filters_in = {}){
     //make sure this row passes all filters
     loop2:
     for(const [col_filt, filt] of filter_entries){
-      if(filt.filter_type == 'select'){
+      if(['select','slider'].includes(filt.filter_type)){
         if(data_in[col_filt][i] != filt.filter_val){
           continue loop1;
         }
@@ -1987,6 +2023,10 @@ function load_config(){
         $(`#global-filter-config .filter-val`).last().children('option')
         .filter(function(){return $(this).text() === config_load.filter[key].filter_val;})
         .prop("selected", true);
+      } else if(config_load.filter[key].filter_type == 'slider'){
+        $(`#global-filter-config .filter-slider-select`).last().children('option')
+        .filter(function(){return $(this).text() === config_load.filter[key].filter_val;})
+        .prop("selected", true).trigger('load_config_change');
       } else {
         $(`#global-filter-config .filter-val`).last().val(config_load.filter[key].filter_val);
       }
@@ -2051,6 +2091,10 @@ function load_config(){
               $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-val`).last().children('option')
               .filter(function(){return $(this).text() === config_load.filter[key].filter_val;})
               .prop("selected", true);
+            } else if(trc.filter[key].filter_type == 'slider'){
+              $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-slider-select`).last().children('option')
+              .filter(function(){return $(this).text() === config_load.filter[key].filter_val;})
+              .prop("selected", true).trigger('load_config_change');
             } else{
               $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-val`).last().val(trc.filter[key].filter_val);
             }
