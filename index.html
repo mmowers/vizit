@@ -823,9 +823,19 @@ $('#data-sources-label').click(function(){
 });
 
 $('#global-style-file').change(function(){
-  let selectFile = $(this).val();
-  config.globalStyleFile = selectFile;
-  updateGlobalStyles(rawData[selectFile]);
+  if($(this).val() === 'none'){
+    delete config.globalStyleFile;
+    globalStyles = {};
+  } else{
+    let selectFile = $(this).val();
+    config.globalStyleFile = selectFile;
+    updateGlobalStyles(rawData[selectFile]);
+  }
+  for (const [dash_idx, dash] of traceData.entries()) {
+    for (const [chart_idx, chart] of traceData[dash_idx].entries()) {
+      updateChart(dash_idx, chart_idx);
+    }
+  }
 });
 
 function updateGlobalStyles(data){
