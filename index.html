@@ -1136,11 +1136,11 @@ function getFilterSelect(uniques){
 
 function getFilterSlider(uniques){
   let html = `<div class="filter-val">
-    <input type="range" min="0" value="0" max="${uniques.length}" class="filter-val-slider">`;
+    <input type="range" min="0" value="0" max="${uniques.length-1}" class="filter-val-slider">`;
   //We store the actual values in a select
-  html += `<select class="filter-slider-select"><option value="0">none</option>`;
+  html += `<select class="filter-slider-select">`;
   for (let i = 0; i < uniques.length; i++){
-    html += `<option value="${i+1}">${uniques[i]}</option>`;
+    html += `<option value="${i}">${uniques[i]}</option>`;
   }
   html += `</select></div>`;
   return html;
