@@ -63,8 +63,13 @@ select{
 .remove-chart{
   color: red;
   display: block;
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
+}
+.remove-filter,
+.remove-style{
+  color: red;
+  margin-left: 10px;
+  cursor: pointer;
 }
 .chart-outer{
   display: inline-block;
@@ -1082,7 +1087,7 @@ function updateGlobalFilters(newFile){
 function getFilterHTML(column){
   return `
     <div class="filter-outer">
-      <label class="filter-name">${column}</label>
+      <label class="filter-name">${column}</label><span class="remove-filter">x</span>
       <select class="filter-type">
         <option value="none">Filter Type</option>
         <option value="select">Select</option>
@@ -1152,6 +1157,13 @@ $('#report').on('change','.add-filter', function(){
   let html = getFilterHTML($(this).val());
   $(this).before(html);
   $(this).val('none');
+});
+
+$('#report').on('click','.remove-filter', function(){
+  let filterName = $(this).siblings('.filter-name').text();
+  let updateButton = $(this).closest('.filter-div').find('.update-filter');
+  $(this).parent('.filter-outer').remove();
+  updateButton.click();
 });
 
 $('body').on('change','.filter-type', function(){
@@ -1313,11 +1325,20 @@ $('#report').on('change','.add-style', function(){
       <label class="style-name">${$(this).val()}</label>
       ${inputHTML}
       <span class="tooltip-parent">(?)<span class="tooltip">${thisStyle.tooltip}</span></span>
+      <span class="remove-style">x</span>
     </div>
   `;
   $(this).before(html);
   $(this).val('none');
 });
+
+$('#report').on('click','.remove-style', function(){
+  let styleName = $(this).siblings('.style-name').text();
+  let updateButton = $(this).closest('.chartstyle-div').find('.update-style');
+  $(this).parent('.style-outer').remove();
+  updateButton.click();
+});
+
 
 $('#report').on('keyup','.style-input', function(){
   if (event.keyCode === 13) {
