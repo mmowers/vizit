@@ -1004,16 +1004,19 @@ $('#report').on('change','.data-source', function(){
 $('#report').on('change','select[data-config="type"]', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  let oldChartType = 'type' in trace_config ? trace_config.type : 'none';
-  trace_config.type = $(this).val();
-  trace_config.agg = chartTypes[$(this).val()].defaultAgg;
   let chartType = $(this).val();
+  let oldChartType = 'type' in trace_config ? trace_config.type : 'none';
+  if(chartType == 'none'){
+    delete trace_config.type;
+  } else{
+    trace_config.type = chartType;
+    trace_config.agg = chartTypes[chartType].defaultAgg;
+  }
   let thisTraceDiv = $(this).parent();
   let selectFile = thisTraceDiv.children('.data-source').val();
   if(selectFile != 'none' && chartType != 'none'){
     if(arraysEqual(chartTypes[chartType].wdgTypes, chartTypes[oldChartType].wdgTypes) &&
-      chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
-      chartTypes[trace_config.type].required.every((val) => val != 'none')
+      chartTypes[trace_config.type].required.every((val) => val in trace_config)
     ){
       updateChart(dash_idx, chart_idx);
     }
@@ -1092,9 +1095,8 @@ $('#report').on('change','.trace-control', function(){
   } else{
     trace_config[$(this).attr('data-config')] = $(this).val();
   }
-  if('type' in trace_config && trace_config.type != 'none' &&
-    chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
-    chartTypes[trace_config.type].required.every((val) => val != 'none')
+  if('type' in trace_config &&
+    chartTypes[trace_config.type].required.every((val) => val in trace_config)
   ){
     if($(this).attr('data-config') != 'type' || $.isEmptyObject(traceData[dash_idx][chart_idx][trace_idx])){
       if('agg' in trace_config && trace_config.agg != 'none'){
@@ -1297,9 +1299,8 @@ $('#update-global-filter').click(function(){
         allFilters = {...config.filter, ...trace_config.filter}; //start with global, then overwrite with trace
         thisTraceData.filteredData = applyFilters(raw_data, allFilters);
         thisTraceData.aggData = thisTraceData.filteredData;
-        if('type' in trace_config && trace_config.type != 'none' &&
-          chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
-          chartTypes[trace_config.type].required.every((val) => val != 'none')
+        if('type' in trace_config &&
+          chartTypes[trace_config.type].required.every((val) => val in trace_config)
         ){
           if('agg' in trace_config && trace_config.agg != 'none'){
             const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
@@ -1332,9 +1333,8 @@ $('#report').on('click','.update-filter', function(){
   let allFilters = {...config.filter, ...trace_config.filter}; //start with global, then overwrite with trace
   thisTraceData.filteredData = applyFilters(raw_data, allFilters);
   thisTraceData.aggData = thisTraceData.filteredData;
-  if('type' in trace_config && trace_config.type != 'none' &&
-    chartTypes[trace_config.type].required.every((val) => val in trace_config) &&
-    chartTypes[trace_config.type].required.every((val) => val != 'none')
+  if('type' in trace_config &&
+    chartTypes[trace_config.type].required.every((val) => val in trace_config)
   ){
     if('agg' in trace_config && trace_config.agg != 'none'){
       const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
@@ -1548,7 +1548,7 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
   const sepWdg = []; //Widgets that cause separate subtraces
   const nonsepWdg = []; //Widgets that don't cause separate subtraces
   for(const wdg of chartTypes[trace_config.type].wdgTypes){
-    if(wdg in trace_config && trace_config[wdg] != 'none'){
+    if(wdg in trace_config){
       if(sepTraceWdg.includes(wdg)){
         sepWdg.push(wdg);
       } else {
