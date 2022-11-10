@@ -176,7 +176,7 @@ text.js-plot-link-container{
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.8.0/plotly.min.js"></script>
-<script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
 </head>
 <body>
 <a style="position: absolute; top: 10px; right: 20px; z-index:100;" href="https://github.com/mmowers/vizit" target="_blank">Vizit GitHub</a>
@@ -500,7 +500,9 @@ const chartTypes = {
       width: 500,
       height: 250,
       geo:{ //https://plotly.com/javascript/reference/layout/geo/
-        scope: 'usa',
+        scope: 'world',
+        showcountries: true,
+        // showsubunits: true,
       }
     }
   },
@@ -1863,10 +1865,13 @@ function updateChart(dash_idx, chart_idx){
               hover_txt = ser_copy.text;
               delete ser_copy.text;
             }
+            let nsteps = 10;
             for(let j = 0; j<ser.lat_start.length; j++){
               let ser_ln_cp = JSON.parse(JSON.stringify(ser_copy));
-              ser_ln_cp.lat = [lat_start[j], lat_end[j]];
-              ser_ln_cp.lon = [lon_start[j], lon_end[j]];
+              let lat_step = (lat_end[j] - lat_start[j])/nsteps;
+              let lon_step = (lon_end[j] - lon_start[j])/nsteps;
+              ser_ln_cp.lat = _.range(lat_start[j], lat_end[j] + lat_step, lat_step);
+              ser_ln_cp.lon = _.range(lon_start[j], lon_end[j] + lon_step, lon_step);
               if('line_width' in trace_config){
                 updateObj(ser_ln_cp, ['line','width'], line_width[j]);
               }
