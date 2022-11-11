@@ -731,7 +731,7 @@ const customStyle = {
   'Map Zoom': {
     type: 'layout',
     path: ['geo','projection','scale'],
-    tooltip: `(0-1). More <a target="_blank" href="https://plotly.com/javascript/reference/layout/geo/#layout-geo-projection-scale">here</a>`,
+    tooltip: `Default is 1. More <a target="_blank" href="https://plotly.com/javascript/reference/layout/geo/#layout-geo-projection-scale">here</a>`,
   },
   'Map Center Latitude': {
     type: 'layout',
@@ -2303,17 +2303,21 @@ function load_config(){
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filters-label`).click();
         }
         //Now non-required widgets
+        let allWdg = chartTypes[trc.type].wdgTypes.concat(['agg']);
+        if('customIn' in chartTypes[trc.type]){
+          allWdg = allWdg.concat(Object.keys(chartTypes[trc.type].customIn));
+        }
         for (const key in trc){
-          if(chartTypes[trc['type']].required.includes(key)){
+          if(chartTypes[trc.type].required.includes(key)){
             continue;
           }
-          if(chartTypes[trc['type']].wdgTypes.concat(['agg']).includes(key)){
+          if(allWdg.includes(key)){
             $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="${key}"`).val(trc[key]).change();
           }
         }
         //Now required widgets
         for (const key in trc){
-          if(chartTypes[trc['type']].required.includes(key)){
+          if(chartTypes[trc.type].required.includes(key)){
             $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] [data-config="${key}"`).val(trc[key]).change();
           }
         }
