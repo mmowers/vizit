@@ -395,6 +395,7 @@ const chartTypes = {
     required:['locations','z'],
     defaultAgg: 'sum',
     aggCol: 'z',
+    continuousColor: true,
     layout:{
       geo: {scope:'usa'},
     }
@@ -424,6 +425,7 @@ const chartTypes = {
     },
     defaultAgg: 'sum',
     aggCol: 'z',
+    continuousColor: true,
     layout:{
       width: 800,
       height: 400,
@@ -648,7 +650,7 @@ const customStyle = {
     tooltip: 'Negative number moves chart left and positive number moves chart right',
   },
   'Z-index': {
-    tooltip: 'Enter a number. Higher z-index will bring to front, lower z-index will move to back. See https://www.w3schools.com/cssref/pr_pos_z-index.asp',
+    tooltip: 'Enter a number. Higher z-index will bring to front, lower z-index will move to back.',
   },
   'Plot Title': {
     type: 'layout',
@@ -710,7 +712,8 @@ const customStyle = {
     path: ['mapbox','style'],
     tooltip: `Free ones are carto-darkmatter, carto-positron, open-street-map,
               stamen-terrain, stamen-toner, stamen-watercolor, white-bg.
-              See https://plotly.com/javascript/reference/layout/mapbox/#layout-mapbox-style`,
+              See <a target="_blank" href="https://plotly.com/javascript/reference/layout/mapbox/#layout-mapbox-style">here</a>
+              for more information.`,
   },
   'Map Zoom': {
     type: 'layout',
@@ -740,20 +743,39 @@ const customStyle = {
     type: 'data',
     path: ['opacity'],
   },
-  'Colorscale': {
+  'Colorscale (marker)': {
     type: 'data',
     path: ['marker','colorscale'],
-    tooltip: `For continuous color maps. e.g. Blackbody, Bluered, Blues,
+    tooltip: `For continuous color markers on maps. e.g. Blackbody, Bluered, Blues,
               Cividis, Earth, Electric, Greens, Greys, Hot, Jet, Picnic, Portland, Rainbow,
-              RdBu, Reds, Viridis, YlGnBu, YlOrRd`,
+              RdBu, Reds, Viridis, YlGnBu, YlOrRd.
+              More <a target="_blank" href="https://plotly.com/javascript/reference/scattergeo/#scattergeo-marker-colorscale">here</a>`,
   },
-  'Colorscale Min': {
+  'Colorscale Min (marker)': {
     type: 'data',
     path: ['marker','cmin'],
   },
-  'Colorscale Max': {
+  'Colorscale Max (marker)': {
     type: 'data',
     path: ['marker','cmax'],
+  },
+  'Colorscale (region)': {
+    type: 'data',
+    path: ['colorscale'],
+    tooltip: `For continuous color region maps. e.g. Blackbody, Bluered, Blues,
+              Cividis, Earth, Electric, Greens, Greys, Hot, Jet, Picnic, Portland, Rainbow,
+              RdBu, Reds, Viridis, YlGnBu, YlOrRd.
+              More <a target="_blank" href="https://plotly.com/javascript/reference/choropleth/#choropleth-colorscale">here</a>`,
+  },
+  'Colorscale Min (region)': {
+    type: 'data',
+    path: ['zmin'],
+    tooltip: `This requires Colorscale Max (region)`,
+  },
+  'Colorscale Max (region)': {
+    type: 'data',
+    path: ['zmax'],
+    tooltip: `This requires Colorscale Min (region)`,
   },
 };
 
@@ -1764,6 +1786,10 @@ function updateChart(dash_idx, chart_idx){
             updateObj(ser, ['marker','color'], ser.marker_color);
             ser.marker.colorscale = rainbow_scl;
             ser.marker.colorbar = default_colorbar;
+          }
+          if('continuousColor' in chartType){
+            ser.colorscale = rainbow_scl;
+            ser.colorbar = default_colorbar;
           }
           if(sepWdg.includes('name')){
             ser.name = ser.sepVals[sepWdg.indexOf('name')];
