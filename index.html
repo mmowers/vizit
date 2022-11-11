@@ -492,6 +492,14 @@ const chartTypes = {
       type: 'scattergeo',
       mode: 'lines',
     },
+    // The following commented section is a method for showing geojson region boundaries on a line map
+    // customIn: {
+    //   geojson: {
+    //     label: 'GeoJSON URL',
+    //     type: 'text',
+    //     tooltip: 'Enter a URL to a geoJSON file defining the regions in the data source.'
+    //   },
+    // },
     wdgTypes: ['lat_start','lon_start','lat_end','lon_end','name','line_width','text'],
     required:['lat_start','lon_start','lat_end','lon_end'],
     defaultAgg: 'none',
@@ -1847,6 +1855,18 @@ function updateChart(dash_idx, chart_idx){
             }
           }
           if(trace_config.type.startsWith('lat/lon/width line map')){
+            //The following commented section is for showing geojson region boundaries
+            // if('geojson' in trace_config){
+            //   //Instead of using .ajax every time, I should probably store the result in a global variable (.e.g 'globalCache' or something, keyed by the url itself)
+            //   $.ajax({
+            //     url: trace_config.geojson,
+            //     dataType: 'json',
+            //     async: false,
+            //     success: function(data) {
+            //       //Logic here
+            //     }
+            //   });
+            // }
             const lat_start=ser.lat_start, lat_end=ser.lat_end, lon_start=ser.lon_start, lon_end=ser.lon_end;
             let ser_copy = JSON.parse(JSON.stringify(ser));
             //Remove properties so that it is lighter to copy in for loop below.
