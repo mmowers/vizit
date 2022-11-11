@@ -765,6 +765,11 @@ const customStyle = {
               RdBu, Reds, Viridis, YlGnBu, YlOrRd.
               More <a target="_blank" href="https://plotly.com/javascript/reference/scattergeo/#scattergeo-marker-colorscale">here</a>`,
   },
+  'Reverse Colorscale (marker)': {
+    type: 'data',
+    path: ['marker','reversescale'],
+    tooltip: `Enter 'true' here to reverse the colorscale`,
+  },
   'Colorscale Min (marker)': {
     type: 'data',
     path: ['marker','cmin'],
@@ -780,6 +785,11 @@ const customStyle = {
               Cividis, Earth, Electric, Greens, Greys, Hot, Jet, Picnic, Portland, Rainbow,
               RdBu, Reds, Viridis, YlGnBu, YlOrRd.
               More <a target="_blank" href="https://plotly.com/javascript/reference/choropleth/#choropleth-colorscale">here</a>`,
+  },
+  'Reverse Colorscale (region)': {
+    type: 'data',
+    path: ['reversescale'],
+    tooltip: `Enter 'true' here to reverse the colorscale`,
   },
   'Colorscale Min (region)': {
     type: 'data',
@@ -1849,6 +1859,9 @@ function updateChart(dash_idx, chart_idx){
                   let marker_size_scaled = ser.marker.size.map(i => i * propVal/6);
                   updateObj(ser, ['marker','size'], marker_size_scaled);
                 } else{
+                  if(propVal == 'true'){
+                    propVal = true;
+                  }
                   updateObj(ser, customStyle[prop].path, propVal);
                 }
               } else if(prop in customStyle && 'type' in customStyle[prop] && customStyle[prop]['type'] == 'layout'){
