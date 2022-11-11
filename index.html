@@ -2302,11 +2302,11 @@ function load_config(){
               });
             } else if(trc.filter[key].filter_type == 'select'){
               $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-val`).last().children('option')
-              .filter(function(){return $(this).text() === config_load.filter[key].filter_val;})
+              .filter(function(){return $(this).text() === trc.filter[key].filter_val;})
               .prop("selected", true);
             } else if(trc.filter[key].filter_type == 'slider'){
               $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-slider-select`).last().children('option')
-              .filter(function(){return $(this).text() === config_load.filter[key].filter_val;})
+              .filter(function(){return $(this).text() === trc.filter[key].filter_val;})
               .prop("selected", true).trigger('load_config_change');
             } else{
               $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filter-val`).last().val(trc.filter[key].filter_val);
