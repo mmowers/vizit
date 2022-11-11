@@ -430,7 +430,7 @@ const chartTypes = {
       width: 800,
       height: 400,
       geo: {
-        fitbounds: 'locations',
+        // fitbounds: 'locations',
         projection:{
           type: 'mercator',
         }
@@ -707,7 +707,7 @@ const customStyle = {
   'Y Max': {
     tooltip: 'Right now, "Y Max" only works with "Y Min" set as well',
   },
-  'Map Style': {
+  'Mapbox Style': {
     type: 'layout',
     path: ['mapbox','style'],
     tooltip: `Free ones are carto-darkmatter, carto-positron, open-street-map,
@@ -715,17 +715,31 @@ const customStyle = {
               See <a target="_blank" href="https://plotly.com/javascript/reference/layout/mapbox/#layout-mapbox-style">here</a>
               for more information.`,
   },
-  'Map Zoom': {
+  'Mapbox Zoom': {
     type: 'layout',
     path: ['mapbox','zoom'],
+    tooltip: `Default is 3`,
   },
-  'Map Center Latitude': {
+  'Mapbox Center Latitude': {
     type: 'layout',
     path: ['mapbox','center','lat'],
   },
-  'Map Center Longitude': {
+  'Mapbox Center Longitude': {
     type: 'layout',
     path: ['mapbox','center','lon'],
+  },
+  'Map Zoom': {
+    type: 'layout',
+    path: ['geo','projection','scale'],
+    tooltip: `(0-1). More <a target="_blank" href="https://plotly.com/javascript/reference/layout/geo/#layout-geo-projection-scale">here</a>`,
+  },
+  'Map Center Latitude': {
+    type: 'layout',
+    path: ['geo','center','lat'],
+  },
+  'Map Center Longitude': {
+    type: 'layout',
+    path: ['geo','center','lon'],
   },
   'Bar Width': {
     type: 'data',
