@@ -307,6 +307,7 @@ let config_load_json_file = null;
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: [{x:[], y:[], sepDims:[],...},...]}.
+const globalCache = {}; //key-value lookup, used to store resources requeested via http.
 let globalStyles = {}; //e.g. {col_name_1: {col_val_1: {color: '', order:''}}}
 let globalColors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
           '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5', '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5'];
@@ -400,7 +401,14 @@ const chartTypes = {
     aggCol: 'z',
     continuousColor: true,
     layout:{
-      geo: {scope:'usa'},
+      width: 500,
+      height: 500,
+      geo: {
+        scope:'usa',
+        projection:{
+          type: 'mercator',
+        }
+      },
     }
   },
   'custom region map':{
@@ -421,6 +429,11 @@ const chartTypes = {
                   If empty, the default is "id".`
       },
     },
+    geojsonboundaries: {
+      label: 'GeoJSON Boundaries URL (optional)',
+      type: 'text',
+      tooltip: 'Enter a URL to a geoJSON file defining region boundaries that are to be drawn (separate from the data).'
+    },
     wdgTypes: ['locations','z','text'],
     required:['geojson','locations','z'],
     customWdgLabels: {
@@ -430,10 +443,9 @@ const chartTypes = {
     aggCol: 'z',
     continuousColor: true,
     layout:{
-      width: 800,
-      height: 400,
+      width: 500,
+      height: 500,
       geo: {
-        // fitbounds: 'locations',
         projection:{
           type: 'mercator',
         }
@@ -444,6 +456,13 @@ const chartTypes = {
     engine:'plotly',
     attr: {
       type: 'scattermapbox',
+    },
+    customIn: {
+      geojsonboundaries: {
+        label: 'GeoJSON Boundaries URL (optional)',
+        type: 'text',
+        tooltip: 'Enter a URL to a geoJSON file defining region boundaries that are to be drawn (separate from the data).'
+      },
     },
     wdgTypes: ['lat','lon','name','marker_size','text'],
     required:['lat','lon'],
@@ -460,6 +479,13 @@ const chartTypes = {
     engine:'plotly',
     attr: {
       type: 'scattermapbox',
+    },
+    customIn: {
+      geojsonboundaries: {
+        label: 'GeoJSON Boundaries URL (optional)',
+        type: 'text',
+        tooltip: 'Enter a URL to a geoJSON file defining region boundaries that are to be drawn (separate from the data).'
+      },
     },
     wdgTypes: ['lat','lon','marker_color','marker_size','text'],
     required:['lat','lon'],
@@ -479,6 +505,13 @@ const chartTypes = {
       fill: 'toself',
       mode: 'none',
     },
+    customIn: {
+      geojsonboundaries: {
+        label: 'GeoJSON Boundaries URL (optional)',
+        type: 'text',
+        tooltip: 'Enter a URL to a geoJSON file defining region boundaries that are to be drawn (separate from the data).'
+      },
+    },
     wdgTypes: ['lat','lon','area','name','text'],
     required:['lat','lon','area'],
     defaultAgg: 'none',
@@ -497,25 +530,24 @@ const chartTypes = {
       type: 'scattergeo',
       mode: 'lines',
     },
-    // The following commented section is a method for showing geojson region boundaries on a line map
-    // customIn: {
-    //   geojson: {
-    //     label: 'GeoJSON URL',
-    //     type: 'text',
-    //     tooltip: 'Enter a URL to a geoJSON file defining the regions in the data source.'
-    //   },
-    // },
+    customIn: {
+      geojsonboundaries: {
+        label: 'GeoJSON Boundaries URL (optional)',
+        type: 'text',
+        tooltip: 'Enter a URL to a geoJSON file defining region boundaries that are to be drawn (separate from the data).'
+      },
+    },
     wdgTypes: ['lat_start','lon_start','lat_end','lon_end','name','line_width','text'],
     required:['lat_start','lon_start','lat_end','lon_end'],
     defaultAgg: 'none',
     aggCol: 'none',
     layout:{
       width: 500,
-      height: 250,
+      height: 500,
       geo:{ //https://plotly.com/javascript/reference/layout/geo/
-        scope: 'world',
-        showcountries: true,
-        // showsubunits: true,
+        projection:{
+          type: 'mercator',
+        }
       }
     }
   },
@@ -524,6 +556,13 @@ const chartTypes = {
     attr: {
       type: 'scattermapbox',
       mode: 'lines',
+    },
+    customIn: {
+      geojsonboundaries: {
+        label: 'GeoJSON Boundaries URL (optional)',
+        type: 'text',
+        tooltip: 'Enter a URL to a geoJSON file defining region boundaries that are to be drawn (separate from the data).'
+      },
     },
     wdgTypes: ['lat_start','lon_start','lat_end','lon_end','name','line_width','text'],
     required:['lat_start','lon_start','lat_end','lon_end'],
@@ -1147,7 +1186,7 @@ $('#report').on('change','.trace-control', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
   let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  if($(this).val() == 'none'){
+  if($(this).val() == 'none' || $(this).val() == ''){
     delete trace_config[$(this).attr('data-config')]
   } else{
     trace_config[$(this).attr('data-config')] = $(this).val();
@@ -1902,6 +1941,45 @@ function updateChart(dash_idx, chart_idx){
               }
             }
           }
+          //The following section is for showing geojson region boundaries
+          if('geojsonboundaries' in trace_config){
+            let geoFile = trace_config.geojsonboundaries;
+            //Instead of using .ajax every time, I should probably store the result in a global variable (.e.g 'globalCache' or something, keyed by the url itself)
+            if(!(geoFile in globalCache)){
+              $.ajax({
+                url: geoFile,
+                dataType: 'json',
+                async: false,
+                success: function(data) {
+                  globalCache[geoFile] = data;
+                }
+              });
+            }
+            let geoData = globalCache[geoFile];
+            let location_arr = [];
+            let z_arr = [];
+            if(geoData.type == 'FeatureCollection'){
+              for(let fi = 0; fi < geoData.features.length; fi++) {
+                geoData.features[fi].id = fi.toString();
+                location_arr.push(fi.toString());
+                z_arr.push(0);
+              }
+            } else if(geoData.type == 'Feature'){
+              geoData.id = '0';
+              location_arr.push('0');
+              z_arr.push(0);
+            }
+            let boundariesType = chartType.attr.type.includes('mapbox') ? 'choroplethmapbox' : 'choropleth';
+            plotlyData.push({
+              type: boundariesType,
+              locations: location_arr,
+              z: z_arr,
+              geojson: geoData,
+              showscale: false,
+              hoverinfo: 'none',
+              colorscale: [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0)']],
+            });
+          }
           if(trace_config.type.startsWith('custom region map')){
             ser.geojson = trace_config.geojson;
             if('featureidkey' in trace_config){
@@ -1911,18 +1989,6 @@ function updateChart(dash_idx, chart_idx){
             }
           }
           if(trace_config.type.startsWith('lat/lon/width line map')){
-            //The following commented section is for showing geojson region boundaries
-            // if('geojson' in trace_config){
-            //   //Instead of using .ajax every time, I should probably store the result in a global variable (.e.g 'globalCache' or something, keyed by the url itself)
-            //   $.ajax({
-            //     url: trace_config.geojson,
-            //     dataType: 'json',
-            //     async: false,
-            //     success: function(data) {
-            //       //Logic here
-            //     }
-            //   });
-            // }
             const lat_start=ser.lat_start, lat_end=ser.lat_end, lon_start=ser.lon_start, lon_end=ser.lon_end;
             let ser_copy = JSON.parse(JSON.stringify(ser));
             //Remove properties so that it is lighter to copy in for loop below.
@@ -2318,11 +2384,12 @@ function load_config(){
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .update-filter`).click();
           $(`#dash-${di}-chart-${ci} [data-traceID="${ti}"] .filters-label`).click();
         }
-        //Now non-required widgets
+        //Add agg and customIn widgets to wdgTypes
         let allWdg = chartTypes[trc.type].wdgTypes.concat(['agg']);
         if('customIn' in chartTypes[trc.type]){
           allWdg = allWdg.concat(Object.keys(chartTypes[trc.type].customIn));
         }
+        //Now non-required widgets
         for (const key in trc){
           if(chartTypes[trc.type].required.includes(key)){
             continue;
