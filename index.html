@@ -1779,6 +1779,45 @@ function updateChart(dash_idx, chart_idx){
           plotlyLayout.grid.rows = sepWdg.includes('row') ? sepWdgUniques['row'].length : 1;
           plotlyLayout.grid.columns = sepWdg.includes('col') ? sepWdgUniques['col'].length : 1;
         }
+        //The following section is for showing geojson region boundaries
+        if('geojsonboundaries' in trace_config){
+          let geoFile = trace_config.geojsonboundaries;
+          //Instead of using .ajax every time, I should probably store the result in a global variable (.e.g 'globalCache' or something, keyed by the url itself)
+          if(!(geoFile in globalCache)){
+            $.ajax({
+              url: geoFile,
+              dataType: 'json',
+              async: false,
+              success: function(data) {
+                globalCache[geoFile] = data;
+              }
+            });
+          }
+          let geoData = globalCache[geoFile];
+          let location_arr = [];
+          let z_arr = [];
+          if(geoData.type == 'FeatureCollection'){
+            for(let fi = 0; fi < geoData.features.length; fi++) {
+              geoData.features[fi].id = fi.toString();
+              location_arr.push(fi.toString());
+              z_arr.push(0);
+            }
+          } else if(geoData.type == 'Feature'){
+            geoData.id = '0';
+            location_arr.push('0');
+            z_arr.push(0);
+          }
+          let boundariesType = chartType.attr.type.includes('mapbox') ? 'choroplethmapbox' : 'choropleth';
+          plotlyData.push({
+            type: boundariesType,
+            locations: location_arr,
+            z: z_arr,
+            geojson: geoData,
+            showscale: false,
+            hoverinfo: 'none',
+            colorscale: [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0)']],
+          });
+        }
         //Add the plotly traces (what we call "subtraces")
         let seriesVals = []; //As we go, we'll add unique elements to seriesVals, and if they already exist, showLegend will be false.
         for(const [j, ser] of subtrace_data.entries()){
@@ -1945,45 +1984,6 @@ function updateChart(dash_idx, chart_idx){
                 plotlyLayout.yaxis.range[1] = Number(propVal);
               }
             }
-          }
-          //The following section is for showing geojson region boundaries
-          if('geojsonboundaries' in trace_config){
-            let geoFile = trace_config.geojsonboundaries;
-            //Instead of using .ajax every time, I should probably store the result in a global variable (.e.g 'globalCache' or something, keyed by the url itself)
-            if(!(geoFile in globalCache)){
-              $.ajax({
-                url: geoFile,
-                dataType: 'json',
-                async: false,
-                success: function(data) {
-                  globalCache[geoFile] = data;
-                }
-              });
-            }
-            let geoData = globalCache[geoFile];
-            let location_arr = [];
-            let z_arr = [];
-            if(geoData.type == 'FeatureCollection'){
-              for(let fi = 0; fi < geoData.features.length; fi++) {
-                geoData.features[fi].id = fi.toString();
-                location_arr.push(fi.toString());
-                z_arr.push(0);
-              }
-            } else if(geoData.type == 'Feature'){
-              geoData.id = '0';
-              location_arr.push('0');
-              z_arr.push(0);
-            }
-            let boundariesType = chartType.attr.type.includes('mapbox') ? 'choroplethmapbox' : 'choropleth';
-            plotlyData.push({
-              type: boundariesType,
-              locations: location_arr,
-              z: z_arr,
-              geojson: geoData,
-              showscale: false,
-              hoverinfo: 'none',
-              colorscale: [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0)']],
-            });
           }
           if(trace_config.type.startsWith('custom region map')){
             ser.geojson = trace_config.geojson;
