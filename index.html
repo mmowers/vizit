@@ -428,11 +428,11 @@ const chartTypes = {
         tooltip: `Enter the key in the geojson file that matches the regions in the data file. Supports nested property, e.g. "properties.name".
                   If empty, the default is "id".`
       },
-    },
-    geojsonboundaries: {
-      label: 'GeoJSON Boundaries URL (optional)',
-      type: 'text',
-      tooltip: 'Enter a URL to a geoJSON file defining region boundaries that are to be drawn (separate from the data).'
+      geojsonboundaries: {
+        label: 'GeoJSON Boundaries URL (optional)',
+        type: 'text',
+        tooltip: 'Enter a URL to a geoJSON file defining region boundaries that are to be drawn (separate from the data).'
+      },
     },
     wdgTypes: ['locations','z','text'],
     required:['geojson','locations','z'],
