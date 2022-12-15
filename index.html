@@ -391,6 +391,21 @@ const chartTypes = {
     defaultAgg: 'sum',
     aggCol: 'z',
   },
+  'boxplot':{
+    engine: 'plotly',
+    attr: {
+      type: 'box',
+      pointpos: 0,
+      boxpoints: 'all',
+    },
+    wdgTypes: ['name','y','row','col'],
+    customWdgLabels: {
+      name: 'X axis'
+    },
+    required: ['y'],
+    defaultAgg: 'none',
+    aggCol: 'none',
+  },
   'US state map (continuous color)':{
     engine:'plotly',
     attr: {
