@@ -396,11 +396,12 @@ const chartTypes = {
     attr: {
       type: 'box',
       pointpos: 0,
-      boxpoints: 'all',
+      boxpoints: false,
     },
-    wdgTypes: ['name','y','row','col'],
+    wdgTypes: ['y','name','row','col'],
     customWdgLabels: {
-      name: 'X axis'
+      y: 'Values',
+      name: 'Group',
     },
     required: ['y'],
     defaultAgg: 'none',
@@ -824,6 +825,12 @@ const customStyle = {
   'Opacity (0-1)': {
     type: 'data',
     path: ['opacity'],
+  },
+  'Boxplot Points': {
+    type: 'data',
+    path: ['boxpoints'],
+    tooltip: `Only for boxplots. Either "all", "outliers", or "suspectedoutliers". Default is false.
+              More <a target="_blank" href="https://plotly.com/javascript/reference/box/#box-boxpoints">here</a>.`,
   },
   'Colorscale (marker)': {
     type: 'data',
