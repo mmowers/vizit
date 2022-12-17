@@ -395,8 +395,30 @@ const chartTypes = {
     engine: 'plotly',
     attr: {
       type: 'box',
+      boxmean: true,
       pointpos: 0,
       boxpoints: false,
+    },
+    wdgTypes: ['y','name','row','col'],
+    customWdgLabels: {
+      y: 'Values',
+      name: 'Group',
+    },
+    required: ['y'],
+    defaultAgg: 'none',
+    aggCol: 'none',
+  },
+  'violin':{
+    engine: 'plotly',
+    attr: {
+      type: 'violin',
+      box: {
+        visible: true,
+      },
+      meanline: {
+        visible: true,
+      },
+      points: false,
     },
     wdgTypes: ['y','name','row','col'],
     customWdgLabels: {
