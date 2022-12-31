@@ -2197,7 +2197,7 @@ function getBoundingBox(lat_deg, lon_deg, dist_km){
   };
 }
 $('#download-html, #download-html-global-filters, #download-html-no-controls').click(function(){
-  var stringifiedConfig = JSON.stringify(config);
+  var stringifiedConfig = JSON.stringify(config, null, 2);
   var stringifiedRawData = JSON.stringify(rawData);
   var stringifiedGlobalStyles = JSON.stringify(globalStyles);
   let html_str = orig_html_str.replace(/let config_load = .*;/,`let config_load = ${stringifiedConfig};`)
