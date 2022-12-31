@@ -220,7 +220,7 @@ text.js-plot-link-container{
           'column_name' and 'column_value' columns must correspond to the column headers and values of the data
           sources, respectively. For 'color' you can use any css color property value, e.g. 'red', '#FF0000', 'rgb(255, 0, 0)' etc.
           For more examples, see <a target="_blank" href="http://web.simmons.edu/~grovesd/comm244/notes/week3/css-colors">this tutorial</a>.
-          <br><br>The order of the rows in this file will eventually determine the order of display, but this hasn't yet been added.
+          <br><br>The order of the rows in this file determines the legend order.
         </span>
       </span>
     </div>
@@ -1924,8 +1924,7 @@ function updateChart(dash_idx, chart_idx){
           }
           if(sepWdg.includes('name')){
             ser.name = ser.sepVals[sepWdg.indexOf('name')];
-            if (!$.isEmptyObject(globalStyles)
-            && trace_config.name in globalStyles
+            if (trace_config.name in globalStyles
             && ser.name in globalStyles[trace_config.name]
             && 'color' in globalStyles[trace_config.name][ser.name]){
               updateObj(ser, ['marker','color'], globalStyles[trace_config.name][ser.name].color);
@@ -1934,7 +1933,11 @@ function updateChart(dash_idx, chart_idx){
               updateObj(ser, ['marker','color'], globalColors[sepWdgUniques.name.indexOf(ser.name)]);
               updateObj(ser, ['line','color'], globalColors[sepWdgUniques.name.indexOf(ser.name)]);
             }
+            if (trace_config.name in globalStyles && ser.name in globalStyles[trace_config.name]){
+              ser.legendrank = parseInt(globalStyles[trace_config.name][ser.name].order);
+            }
           } else{
+            //TODO: Allow user to enter custom name for trace and/or use file name + value column name by default?
             ser.name = `Data ${i}`;
             if(!('marker_color' in trace_config)){
               updateObj(ser, ['marker','color'], globalColors[i]);
