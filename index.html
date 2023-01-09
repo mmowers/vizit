@@ -487,11 +487,11 @@ const chartTypes = {
       },
     }
   },
-  'custom region map (mapbox)':{/*Mostly copied, see below*/},
+  'custom region map (mapbox)':{}, //Mostly copied, see below
   'lat/lon/size dot map':{
     engine:'plotly',
     attr: {
-      type: 'scattermapbox',
+      type: 'scattergeo',
       hoverinfo: 'text+name',
     },
     customIn: {
@@ -506,12 +506,16 @@ const chartTypes = {
     defaultAgg: 'none',
     aggCol: 'none',
     layout:{
-      width: 800,
-      height: 400,
-      dragmode: 'zoom',
-      mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
+      width: 500,
+      height: 500,
+      geo: {
+        projection:{
+          type: 'mercator',
+        }
+      },
     }
   },
+  'lat/lon/size dot map (mapbox)':{}, //Mostly copied, see below
   'lat/lon/size dot map (continuous color)':{
     engine:'plotly',
     attr: {
@@ -624,6 +628,15 @@ chartTypes['custom region map (mapbox)'].layout = {
   width: 800,
   height: 400,
   mapbox: {style: 'carto-positron'},
+};
+
+chartTypes['lat/lon/size dot map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['lat/lon/size dot map']));
+chartTypes['lat/lon/size dot map (mapbox)'].attr.type = 'scattermapbox';
+chartTypes['lat/lon/size dot map (mapbox)'].layout = {
+  width: 800,
+  height: 400,
+  dragmode: 'zoom',
+  mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
 };
 
 //Every chart can have explode
