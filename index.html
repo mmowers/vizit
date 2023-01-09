@@ -595,31 +595,7 @@ const chartTypes = {
       }
     }
   },
-  'lat/lon/width line map (mapbox)':{
-    engine:'plotly',
-    attr: {
-      type: 'scattermapbox',
-      mode: 'lines',
-      hoverinfo: 'text+name',
-    },
-    customIn: {
-      geojsonboundaries: {
-        label: 'GeoJSON Boundaries URL (optional)',
-        type: 'text',
-        tooltip: 'Enter a URL to a geoJSON file defining region boundaries that are to be drawn (separate from the data).'
-      },
-    },
-    wdgTypes: ['lat_start','lon_start','lat_end','lon_end','name','line_width','text'],
-    required:['lat_start','lon_start','lat_end','lon_end'],
-    defaultAgg: 'none',
-    aggCol: 'none',
-    layout:{
-      width: 800,
-      height: 400,
-      dragmode: 'zoom',
-      mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
-    }
-  },
+  'lat/lon/width line map (mapbox)':{},
 };
 
 chartTypes['custom region map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['custom region map']));
@@ -633,6 +609,15 @@ chartTypes['custom region map (mapbox)'].layout = {
 chartTypes['lat/lon/size dot map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['lat/lon/size dot map']));
 chartTypes['lat/lon/size dot map (mapbox)'].attr.type = 'scattermapbox';
 chartTypes['lat/lon/size dot map (mapbox)'].layout = {
+  width: 800,
+  height: 400,
+  dragmode: 'zoom',
+  mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
+};
+
+chartTypes['lat/lon/width line map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['lat/lon/width line map']));
+chartTypes['lat/lon/width line map (mapbox)'].attr.type = 'scattermapbox';
+chartTypes['lat/lon/width line map (mapbox)'].layout = {
   width: 800,
   height: 400,
   dragmode: 'zoom',
