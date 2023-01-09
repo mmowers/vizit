@@ -490,6 +490,7 @@ const chartTypes = {
       },
     }
   },
+  'custom region map (mapbox)':{/*Mostly copied, see below*/},
   'lat/lon/size dot map':{
     engine:'plotly',
     attr: {
@@ -627,6 +628,7 @@ chartTypes['custom region map (mapbox)'].layout = {
   height: 400,
   mapbox: {style: 'carto-positron'},
 };
+
 //Every chart can have explode
 for(const k in chartTypes){
   if('wdgTypes' in chartTypes[k]){
