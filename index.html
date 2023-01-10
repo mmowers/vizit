@@ -519,7 +519,7 @@ const chartTypes = {
   'lat/lon/size dot map (continuous color)':{
     engine:'plotly',
     attr: {
-      type: 'scattermapbox',
+      type: 'scattergeo',
       hoverinfo: 'text+name',
     },
     customIn: {
@@ -534,16 +534,20 @@ const chartTypes = {
     defaultAgg: 'none',
     aggCol: 'none',
     layout:{
-      width: 800,
-      height: 400,
-      dragmode: 'zoom',
-      mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
+      width: 500,
+      height: 500,
+      geo: {
+        projection:{
+          type: 'mercator',
+        }
+      },
     }
   },
-  'lat/lon/area map':{
+  'lat/lon/size dot map (continuous color) (mapbox)':{}, //Mostly copied, see below
+  'lat/lon/area squares map':{
     engine:'plotly',
     attr: {
-      type: 'scattermapbox',
+      type: 'scattergeo',
       fill: 'toself',
       mode: 'none',
       hoverinfo: 'text+name',
@@ -560,13 +564,17 @@ const chartTypes = {
     defaultAgg: 'none',
     aggCol: 'area',
     layout:{
-      width: 800,
-      height: 400,
-      dragmode: 'zoom',
-      mapbox: { style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
+      width: 500,
+      height: 500,
+      geo: {
+        projection:{
+          type: 'mercator',
+        }
+      },
       showlegend: true,
     }
   },
+  'lat/lon/area squares map (mapbox)':{},
   'lat/lon/width line map':{
     engine:'plotly',
     attr: {
@@ -613,6 +621,25 @@ chartTypes['lat/lon/size dot map (mapbox)'].layout = {
   height: 400,
   dragmode: 'zoom',
   mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
+};
+
+chartTypes['lat/lon/size dot map (continuous color) (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['lat/lon/size dot map (continuous color)']));
+chartTypes['lat/lon/size dot map (continuous color) (mapbox)'].attr.type = 'scattermapbox';
+chartTypes['lat/lon/size dot map (continuous color) (mapbox)'].layout = {
+  width: 800,
+  height: 400,
+  dragmode: 'zoom',
+  mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
+};
+
+chartTypes['lat/lon/area squares map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['lat/lon/area squares map']));
+chartTypes['lat/lon/area squares map (mapbox)'].attr.type = 'scattermapbox';
+chartTypes['lat/lon/area squares map (mapbox)'].layout = {
+  width: 800,
+  height: 400,
+  dragmode: 'zoom',
+  mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
+  showlegend: true,
 };
 
 chartTypes['lat/lon/width line map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['lat/lon/width line map']));
@@ -1834,7 +1861,7 @@ function updateChart(dash_idx, chart_idx){
         //Add the plotly traces (what we call "subtraces")
         let seriesVals = []; //As we go, we'll add unique elements to seriesVals, and if they already exist, showLegend will be false.
         for(const [j, ser] of subtrace_data.entries()){
-          if(trace_config.type == 'lat/lon/area map'){
+          if(trace_config.type.startsWith('lat/lon/area squares map')){
             //If this is a lat/lon/area map, we need to find the bounding box and draw it.
             //This expands the lat and lon arrays, and we'll also expand the other arrays to match.
             const new_ser = {};
