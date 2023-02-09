@@ -301,7 +301,7 @@ text.js-plot-link-container{
 const files = {}; //list of html File objects
 let config_load = null; //this gets replaced if we have saved config
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
-const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
+let rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: [{x:[], y:[], sepDims:[],...},...]}.
 const globalCache = {}; //key-value lookup, used to store resources requeested via http.
 let globalStyles = {}; //e.g. {col_name_1: {col_val_1: {color: '', order:''}}}
@@ -2254,7 +2254,7 @@ $('#download-html, #download-html-global-filters, #download-html-no-controls').c
   var stringifiedRawData = JSON.stringify(rawData);
   var stringifiedGlobalStyles = JSON.stringify(globalStyles);
   let html_str = orig_html_str.replace(/let config_load = .*;/,`let config_load = ${stringifiedConfig};`)
-  html_str = html_str.replace(/const rawData = .*;/,`const rawData = ${stringifiedRawData};`)
+  html_str = html_str.replace(/let rawData = .*;/,`let rawData = ${stringifiedRawData};`)
   if(this.id == 'download-html-global-filters'){
     let newCSS = `
     #data-sources-label,
@@ -2348,7 +2348,10 @@ $('#config-url').click(function(){
 function check_and_load_config(){
   if(config_load === null){return;}
   if(config_load.fileNames[0] == '1 file' && !$.isEmptyObject(rawData)){
-    rawData['1 file'] = rawData[Object.keys(rawData)[0]];
+    //Make first key of rawData equal to '1 file' and remove all others
+    let temp = rawData[Object.keys(rawData)[0]];
+    rawData = {};
+    rawData['1 file'] = temp;
   }
   if(config_load.fileNames.every(val => val in rawData)){
     $(document).ready(load_config);
