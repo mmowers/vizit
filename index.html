@@ -300,7 +300,6 @@ text.js-plot-link-container{
 'use strict';
 const files = {}; //list of html File objects
 let config_load = null; //this gets replaced if we have saved config
-let config_load_json_file = null;
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
 const rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: [{x:[], y:[], sepDims:[],...},...]}.
@@ -966,7 +965,7 @@ $('#file-input').change(function(evt){
       $(`#file-list li[data-name="${newFiles[i].name}"]`).remove();
       delete files[newFiles[i].name];
     }
-    //If this is a config json file, we will save it in config_load_json_file and load
+    //If this is a config json file, we will save it in config_load and load
     if(newFiles[i].name.startsWith('vizit-config') && newFiles[i].name.endsWith('.json')){
       const reader = new FileReader();
       reader.onload = function(evt) {
@@ -975,11 +974,7 @@ $('#file-input').change(function(evt){
           `<li data-name="${newFiles[i].name}">${newFiles[i].name}
             (requires <b>${config_load.fileNames.join(', ')}</b>)</li>`
         );
-        config_load_json_file = newFiles[i];
-        if(config_load.fileNames[0] == '1 file' && !$.isEmptyObject(rawData)){
-          rawData['1 file'] = rawData[Object.keys(rawData)[0]];
-        }
-        if(config_load.fileNames.every(val => val in rawData)) load_config();
+        check_and_load_config();
       }
       reader.readAsText(newFiles[i]);
     } else{
@@ -998,12 +993,7 @@ $('#file-input').change(function(evt){
           $('#file-list').append(`<li data-name="${newFiles[i].name}">${newFiles[i].name}</li>`);
           //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
           $('.standard-file-select').append(`<option value="${newFiles[i].name}">${newFiles[i].name}</option>`); //what if we already have this?
-          if(config_load_json_file != null && config_load.fileNames[0] == '1 file' && !$.isEmptyObject(rawData)){
-            rawData['1 file'] = rawData[Object.keys(rawData)[0]];
-          }
-          if(config_load_json_file != null && config_load.fileNames.every(val => val in rawData)){
-            load_config();
-          }
+          check_and_load_config();
         }
       });
     }
@@ -1056,12 +1046,7 @@ $('#add-url-input').click(function(){
       updateGlobalFilters(filePath);
       $('#file-list').append(`<li data-name="${filePath}">${filePath}</li>`);
       $('.standard-file-select').append(`<option value="${filePath}">${filePath}</option>`);
-      if(config_load_json_file != null && config_load.fileNames[0] == '1 file' && !$.isEmptyObject(rawData)){
-        rawData['1 file'] = rawData[Object.keys(rawData)[0]];
-      }
-      if(config_load_json_file != null && config_load.fileNames.every(val => val in rawData)){
-        load_config();
-      }
+      check_and_load_config();
     }
   });
 });
@@ -2360,6 +2345,16 @@ $('#config-url').click(function(){
   window.open(`https://mmowers.github.io/vizit?config=${encodeURIComponent(JSON.stringify(config))}`, "_blank");
 });
 
+function check_and_load_config(){
+  if(config_load === null){return;}
+  if(config_load.fileNames[0] == '1 file' && !$.isEmptyObject(rawData)){
+    rawData['1 file'] = rawData[Object.keys(rawData)[0]];
+  }
+  if(config_load.fileNames.every(val => val in rawData)){
+    $(document).ready(load_config);
+  }
+}
+
 //Function to import specified configurations.
 function load_config(){
   if (config_load === null) {
@@ -2525,10 +2520,7 @@ if('config' in params){
         updateGlobalFilters(fileName);
         $('#file-list').append(`<li data-name="${fileName}">${fileName}</li>`);
         $('.standard-file-select').append(`<option value="${fileName}">${fileName}</option>`);
-        if(config_load.fileNames[0] == '1 file' && !$.isEmptyObject(rawData)){
-          rawData['1 file'] = rawData[Object.keys(rawData)[0]];
-        }
-        if(config_load.fileNames.every(val => val in rawData)) $(document).ready(load_config);
+        check_and_load_config();
       }
     });
   }
