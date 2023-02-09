@@ -388,6 +388,35 @@ const chartTypes = {
     defaultAgg: 'sum',
     aggCol: 'z',
   },
+  'histogram':{
+    engine: 'plotly',
+    attr: {
+      type: 'histogram',
+      histfunc: 'count',
+    },
+    wdgTypes: ['x','name','row','col'],
+    customWdgLabels: {
+      x: 'Values',
+    },
+    required: ['x'],
+    defaultAgg: 'none',
+    aggCol: 'none',
+  },
+  'weighted histogram':{
+    engine: 'plotly',
+    attr: {
+      type: 'histogram',
+      histfunc: 'sum',
+    },
+    wdgTypes: ['x','y','name','row','col'],
+    customWdgLabels: {
+      x: 'Values',
+      y: 'Weights',
+    },
+    required: ['x','y'],
+    defaultAgg: 'sum',
+    aggCol: 'y',
+  },
   'boxplot':{
     engine: 'plotly',
     attr: {
@@ -869,6 +898,12 @@ const customStyle = {
   'Opacity (0-1)': {
     type: 'data',
     path: ['opacity'],
+  },
+  'Histogram size of each bin': {
+    type: 'data',
+    path: ['xbins','size'],
+    tooltip: `Only for histogram plots. Enter number of x-axis bins.
+              More <a target="_blank" href="https://plotly.com/javascript/reference/histogram/#histogram-xbins-size">here</a>.`,
   },
   'Boxplot Points': {
     type: 'data',
