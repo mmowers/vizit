@@ -2353,6 +2353,28 @@ function check_and_load_config(){
     rawData = {};
     rawData['1 file'] = temp;
   }
+  if(config_load.fileNames[0] == '2 files' && Object.keys(rawData).length == 2){
+    //Make '2 files' entry in rawData by concatenating rawData entries together
+    //(with added filename column) and remove other entries of rawData.
+    let newObj = {};
+    for (const [rdkey, rdval] of Object.entries(rawData)) {
+      rdval['filename'] = Array(rdval[Object.keys(rdval)[0]].length).fill(rdkey);
+      let firstrd = $.isEmptyObject(newObj) ? true : false;
+      for (const [colkey, colval] of Object.entries(rdval)) {
+        if(firstrd){
+          newObj[colkey] = colval;
+        } else{
+          if(colkey in newObj){
+            newObj[colkey] = newObj[colkey].concat(colval);
+          } else{
+            delete newObj[colkey]; //only keep columns that are in all files
+          }
+        }
+      }
+    }
+    rawData = {};
+    rawData[config_load.fileNames[0]] = newObj;
+  }
   if(config_load.fileNames.every(val => val in rawData)){
     $(document).ready(load_config);
   }
