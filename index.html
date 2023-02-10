@@ -382,6 +382,19 @@ const chartTypes = {
       }
     },
   },
+  'grouped bar':{
+    engine: 'plotly',
+    attr: {
+      type: 'bar',
+    },
+    wdgTypes: ['x','y','name','row','col'],
+    required: ['y','name'],
+    defaultAgg: 'sum',
+    aggCol: 'y',
+    layout:{
+      barmode: 'group',
+    },
+  },
   '3D dot':{
     engine: 'plotly',
     attr: {
