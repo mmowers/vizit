@@ -101,7 +101,6 @@ select{
 #global-config{
   border: 1px solid lightgray;
 }
-#data-sources-label,
 #global-config-header,
 .filters-label,
 .styles-label,
@@ -116,9 +115,15 @@ select{
   color: #0088cc;
   cursor: pointer;
 }
-#data-sources-label{
+#data-sources-label,
+#bottom-controls-label{
+  color: #0088cc;
+  cursor: pointer;
   display: block;
   font-weight: bold;
+}
+#bottom-controls{
+  display: none;
 }
 .add-style,
 .update-style,
@@ -231,6 +236,7 @@ text.js-plot-link-container{
 <div id="report">
   <button class="add-dashboard">Add Dashboard</button>
 </div>
+<div id="bottom-controls-label">Save / Download</div>
 <div id="bottom-controls">
   <span id="download-html">
     Download vizit.html
@@ -1005,6 +1011,9 @@ $('#global-config-header').click(function(){
 });
 $('#data-sources-label').click(function(){
   $('#data-sources').toggle();
+});
+$('#bottom-controls-label').click(function(){
+  $('#bottom-controls').toggle();
 });
 
 $('#global-style-file').change(function(){
@@ -2265,7 +2274,7 @@ $('#download-html, #download-html-global-filters, #download-html-no-controls').c
     #update-global-filter,
     .filters-label,
     .filter-type,
-    #bottom-controls,
+    #bottom-controls-label,
     .add-dashboard,
     .remove-dashboard,
     .remove-filter,
@@ -2287,7 +2296,7 @@ $('#download-html, #download-html-global-filters, #download-html-no-controls').c
   } else if(this.id == 'download-html-no-controls'){
     let newCSS = `
     #top-controls,
-    #bottom-controls,
+    #bottom-controls-label,
     .add-dashboard,
     .remove-dashboard,
     .add-chart,
