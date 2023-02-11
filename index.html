@@ -316,6 +316,7 @@ let globalColors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c5
 for(let i = 0; i < 10; i++){
   globalColors = globalColors.concat(globalColors); //This doubles globalColors each time.
 }
+let timings = {'applyFilters': 0, 'aggregate': 0, 'updateTraceData': 0, 'updateChart': 0};
 //Maybe instead keep track of if we've already aggregated data a certain way, defined by filename, an index (sorted array of columns), and value column?
 let plotlySchema = Plotly.PlotSchema.get(); //I found this on a forum: https://community.plotly.com/t/plotly-json-schema-reference/21261
 // Plotly reference links:
@@ -1626,6 +1627,8 @@ function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
   //agg_col is the column to aggregate
   //help_cols is array of columns needed for some aggregation.
 
+  let startTime = performance.now();
+
   //Do I split-apply-combine? Right now I'm just applying as i iterate through...
   const data_in_len = data_in[Object.keys(data_in)[0]].length;
   let data_in_idx = []; //array of arrays.
@@ -1656,6 +1659,7 @@ function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
   for(let i = 0; i < arr_out.length; i++){
     data_out[idx_cols[i]] = arr_out[i];
   }
+  timings.aggregate += (performance.now() - startTime)/1000;
   return data_out;
 }
 
@@ -1665,6 +1669,7 @@ function applyFilters(data_in, filters_in = {}){
   if($.isEmptyObject(filters_in)){
     return data_in;
   }
+  let startTime = performance.now();
   //else (explicit else not needed because of return statement)
   let filters = JSON.parse(JSON.stringify(filters_in)); //Make local copy so i don't change the original
   //Only apply filters that reference columns in data_in
@@ -1727,10 +1732,12 @@ function applyFilters(data_in, filters_in = {}){
       data_out[col].push(data_in[col][i]);
     }
   }
+  timings.applyFilters += (performance.now() - startTime)/1000;
   return data_out;
 }
 
 function updateTraceData(dash_idx, chart_idx, trace_idx){
+  let startTime = performance.now();
   const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
   thisTraceData.subtraces = []; //E.g. a trace could be a series of lines while a subtrace would be each line (plotly disagrees)
   const subtrace_data = thisTraceData.subtraces;
@@ -1798,8 +1805,10 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
       }
     }
   }
+  timings.updateTraceData += (performance.now() - startTime)/1000;
 }
 function updateChart(dash_idx, chart_idx){
+  let startTime = performance.now();
   const chart_config = JSON.parse(JSON.stringify(config.dashboards[dash_idx].charts[chart_idx])); //Maybe structuredClone would be better...
   const chart_data = JSON.parse(JSON.stringify(traceData[dash_idx][chart_idx]));
   if($(`#chart-container-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
@@ -2147,6 +2156,7 @@ function updateChart(dash_idx, chart_idx){
       // window.dispatchEvent(new Event('resize')); //This works but maybe we should just be using plotly width and height...
     }
   }
+  timings.updateChart += (performance.now() - startTime)/1000;
 }
 
 function updateObj(obj, keys, value){
