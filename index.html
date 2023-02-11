@@ -2408,6 +2408,19 @@ function load_config(){
   if (config_load === null) {
     return;
   }
+  //Reduce raw data by specified columns
+  if('include_cols' in config_load){
+    let temp;
+    for (const [filename, dataframe] of Object.entries(rawData)){
+      temp = {};
+      for(const [col, vals] of Object.entries(dataframe)){
+        if(config_load.include_cols.includes(col)){
+          temp[col] = vals;
+        }
+      }
+      rawData[filename] = temp;
+    }
+  }
   config.fileNames = config_load.fileNames;
   //Configure all the charts like a user would, but do the required widgets last so the charts only get built once.
   //First global styles
