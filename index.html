@@ -2382,11 +2382,12 @@ function check_and_load_config(){
   if(config_load === null){return;}
   if(config_load.fileNames[0] == '1 file' && !$.isEmptyObject(rawData)){
     //Make first key of rawData equal to '1 file' and remove all others
-    let temp = rawData[Object.keys(rawData)[0]];
+    let filename_orig = Object.keys(rawData)[0];
+    let temp = rawData[filename_orig];
+    temp['filename'] = Array(temp[Object.keys(temp)[0]].length).fill(filename_orig);
     rawData = {};
     rawData['1 file'] = temp;
-  }
-  if(config_load.fileNames[0] == '2 files' && Object.keys(rawData).length == 2){
+  } else if(config_load.fileNames[0] == '2 files' && Object.keys(rawData).length == 2){
     //Make '2 files' entry in rawData by concatenating rawData entries together
     //(with added filename column) and remove other entries of rawData.
     let newObj = {};
@@ -2418,6 +2419,7 @@ function load_config(){
   if (config_load === null) {
     return;
   }
+  config.fileNames = config_load.fileNames;
   //Reduce raw data by specified columns
   if('include_cols' in config_load){
     let temp;
@@ -2431,7 +2433,7 @@ function load_config(){
       rawData[filename] = temp;
     }
   }
-  config.fileNames = config_load.fileNames;
+  config.include_cols = config_load.include_cols;
   //Configure all the charts like a user would, but do the required widgets last so the charts only get built once.
   //First global styles
   $('#global-config-header').click();
