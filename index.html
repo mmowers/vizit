@@ -173,6 +173,11 @@ text.js-plot-link-container{
 .tooltip-parent:hover .tooltip {
   display: block;
 }
+#vizit-console{
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
 /*no-controls-placeholder*/
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
@@ -301,9 +306,17 @@ text.js-plot-link-container{
     </span>
   </span>
 </div>
+<div id="vizit-console">
+  <span id="vizit-console-msg"></span>
+  <span id="vizit-console-timer">
+    <span id="timer-mins">0</span>:
+    <span id="timer-secs">00</span>
+  </span>
+</div>
 
 <script>
 'use strict';
+let timex = null;
 const files = {}; //list of html File objects
 let config_load = null; //this gets replaced if we have saved config
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
@@ -1662,6 +1675,7 @@ function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
 function applyFilters(data_in, filters_in = {}){
   //data_in looks like {col1:[], col2:[],...}
   //filters_in looks like {col1: {filter_type: 'include', filter_val:[]},...}
+  startTimer('Apply Filters');
   if($.isEmptyObject(filters_in)){
     return data_in;
   }
@@ -1727,10 +1741,12 @@ function applyFilters(data_in, filters_in = {}){
       data_out[col].push(data_in[col][i]);
     }
   }
+  stopTimer();
   return data_out;
 }
 
 function updateTraceData(dash_idx, chart_idx, trace_idx){
+  startTimer('Update trace data');
   const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
   thisTraceData.subtraces = []; //E.g. a trace could be a series of lines while a subtrace would be each line (plotly disagrees)
   const subtrace_data = thisTraceData.subtraces;
@@ -1798,8 +1814,10 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
       }
     }
   }
+  stopTimer();
 }
 function updateChart(dash_idx, chart_idx){
+  startTimer('Update chart');
   const chart_config = JSON.parse(JSON.stringify(config.dashboards[dash_idx].charts[chart_idx])); //Maybe structuredClone would be better...
   const chart_data = JSON.parse(JSON.stringify(traceData[dash_idx][chart_idx]));
   if($(`#chart-container-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
@@ -2164,6 +2182,7 @@ function updateObj(obj, keys, value){
     //Walk to the next level of the object
     obj = obj[item];
   });
+  stopTimer();
 }
 
 function get_idx(that){
@@ -2186,6 +2205,7 @@ function get_idx(that){
 function transpose_to_obj(matrix_in) {
   //matrix_in is array of arrays
   //obj_out is object with keys as first row of matrix_in and values as transposed matrix_in arrays (minus first row of matrix_in)
+  startTimer('Transposing to object');
   const rows = matrix_in.length;
   const cols = matrix_in[0].length;
   const header = matrix_in[0];
@@ -2198,11 +2218,13 @@ function transpose_to_obj(matrix_in) {
       obj_out[header[j]][i-1] = matrix_in[i][j];
     }
   }
+  stopTimer();
   return obj_out;
 }
 
 //I got the following from https://stackoverflow.com/a/46805290/11048803, "Vanilla Approach"
 function transpose(matrix_in) {
+  startTimer('Transposing');
   const rows = matrix_in.length;
   const cols = matrix_in[0].length;
   const matrix_out = [];
@@ -2214,6 +2236,7 @@ function transpose(matrix_in) {
       matrix_out[j][i] = matrix_in[i][j];
     }
   }
+  stopTimer();
   return matrix_out;
 }
 
@@ -2271,6 +2294,32 @@ function getBoundingBox(lat_deg, lon_deg, dist_km){
     lon_max: max_lon_rad * RAD2DEG,
   };
 }
+
+function startTimer(msg=null){
+  clearInterval(timex);
+  $('#vizit-console-msg').text(msg);
+  let secs = 0;
+  let mins = 0;
+  $("#timer-secs").text(`0${secs}`);
+  $("#timer-mins").text(mins);
+  timex = setInterval(function(){
+    secs++;
+    if(secs >59){
+      secs=0;
+      mins++;
+      $("#timer-mins").text(mins);
+    }    
+    if(secs <10) {
+      $("#timer-secs").text('0'+secs);
+    } else {
+      $("#timer-secs").text(secs);
+    }
+  },1000);
+}
+function stopTimer(){
+  clearInterval(timex);
+}
+
 $('#download-html, #download-html-global-filters, #download-html-no-controls').click(function(){
   var stringifiedConfig = JSON.stringify(config);
   var stringifiedRawData = JSON.stringify(rawData);
