@@ -107,6 +107,7 @@ select{
 .filter-name,
 .trace-title,
 #download-html,
+#download-html-blank,
 #download-html-global-filters,
 #download-html-no-controls,
 #download-json,
@@ -268,6 +269,16 @@ text.js-plot-link-container{
     </span>
   </span>
   <br>
+  <span id="download-html-blank">
+    Download vizit.html blank
+    <span class="tooltip-parent">
+      (?)
+      <span class="tooltip">
+        Download current version of vizit html without any data or charts, so this version of vizit can be used from scratch again.
+      </span>
+    </span>
+  </span>
+  <br>
   <span id="download-json">
     Download vizit-config.json
     <span class="tooltip-parent">
@@ -305,9 +316,9 @@ text.js-plot-link-container{
 <script>
 'use strict';
 const files = {}; //list of html File objects
-let config_load = null; //this gets replaced if we have saved config
+let config_load = null;
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
-let rawData = {}; //mapping of filenames to full raw data (or could this keep too much data in memory?)
+let rawData = {};
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: [{x:[], y:[], sepDims:[],...},...]}.
 const globalCache = {}; //key-value lookup, used to store resources requeested via http.
 let globalStyles = {}; //e.g. {col_name_1: {col_val_1: {color: '', order:''}}}
@@ -2281,12 +2292,18 @@ function getBoundingBox(lat_deg, lon_deg, dist_km){
     lon_max: max_lon_rad * RAD2DEG,
   };
 }
-$('#download-html, #download-html-global-filters, #download-html-no-controls').click(function(){
+$('#download-html, #download-html-global-filters, #download-html-no-controls, #download-html-blank').click(function(){
   var stringifiedConfig = JSON.stringify(config);
   var stringifiedRawData = JSON.stringify(rawData);
   var stringifiedGlobalStyles = JSON.stringify(globalStyles);
-  let html_str = orig_html_str.replace(/let config_load = .*;/,`let config_load = ${stringifiedConfig};`)
-  html_str = html_str.replace(/let rawData = .*;/,`let rawData = ${stringifiedRawData};`)
+  let html_str;
+  if(this.id == 'download-html-blank'){
+    html_str = orig_html_str.replace(/\nlet config_load = .*;\n/,`\nlet config_load = null;\n`);
+    html_str = html_str.replace(/\nlet rawData = .*;\n/,`\nlet rawData = {};\n`);
+  } else{
+    html_str = orig_html_str.replace(/\nlet config_load = .*;\n/,`\nlet config_load = ${stringifiedConfig};\n`);
+    html_str = html_str.replace(/\nlet rawData = .*;\n/,`\nlet rawData = ${stringifiedRawData};\n`);
+  }
   if(this.id == 'download-html-global-filters'){
     let newCSS = `
     #data-sources-label,
