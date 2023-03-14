@@ -317,7 +317,6 @@ text.js-plot-link-container{
 
 <script>
 'use strict';
-const files = {}; //list of html File objects
 let config_load = null;
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
 let rawData = {};
@@ -993,45 +992,68 @@ $('#file-input').change(function(evt){
   let newFiles = Array.from(evt.target.files);
   //Load all the files asynchronously
   for(let i = 0; i < newFiles.length; i++){
-    //If the file already exists, remove the old version
-    if(newFiles[i].name in files){
-      $(`#file-list li[data-name="${newFiles[i].name}"]`).remove();
-      delete files[newFiles[i].name];
-    }
-    //If this is a config json file, we will save it in config_load and load
-    if(newFiles[i].name.endsWith('.json')){
+    read_file(newFiles[i]);
+  }
+});
+
+$('#add-url-input').click(function(){
+  read_file($('#url-input').val(), 'url');
+});
+
+function read_file(newFile, type='file'){
+  let newFileName, download;
+  if(type == 'url'){
+    newFileName = newFile;
+    download = true;
+  } else if(type == 'file'){
+    newFileName = newFile.name;
+    download = false;
+  }
+  $(`#file-list li[data-name="${newFileName}"]`).remove();
+  //If this is a config json file, we will save it in config_load and load
+  if(newFileName.endsWith('.json')){
+    if(type == 'file'){
       const reader = new FileReader();
       reader.onload = function(evt) {
         config_load = JSON.parse(evt.target.result);
         $('#file-list').append(
-          `<li data-name="${newFiles[i].name}">${newFiles[i].name}
+          `<li data-name="${newFileName}">${newFileName}
             (requires <b>${config_load.fileNames.join(', ')}</b>)</li>`
         );
         check_and_load_config();
       }
-      reader.readAsText(newFiles[i]);
-    } else{
-    //Else add the new file to the files object and load
-      files[newFiles[i].name] = newFiles[i];
-      if(!config.fileNames.includes(newFiles[i].name)) config.fileNames.push(newFiles[i].name);
-      config.fileNames.sort();
-      Papa.parse(newFiles[i], {
-        worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
-        header: false,
-        dynamicTyping: true,
-        skipEmptyLines: true,
-        complete: function(results, file) {
-          rawData[newFiles[i].name] = transpose_to_obj(results.data);
-          updateGlobalFilters(newFiles[i].name);
-          $('#file-list').append(`<li data-name="${newFiles[i].name}">${newFiles[i].name}</li>`);
-          //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
-          $('.standard-file-select').append(`<option value="${newFiles[i].name}">${newFiles[i].name}</option>`); //what if we already have this?
-          check_and_load_config();
-        }
+      reader.readAsText(newFile);
+    } else if(type == 'url'){
+      $.getJSON(newFile, function(data){
+        config_load = data;
+        $('#file-list').append(
+          `<li data-name="${newFileName}">${newFileName}
+            (requires <b>${config_load.fileNames.join(', ')}</b>)</li>`
+        );
+        check_and_load_config();
       });
     }
+  } else{
+  //Else load the data file
+    if(!config.fileNames.includes(newFileName)) config.fileNames.push(newFileName);
+    config.fileNames.sort();
+    Papa.parse(newFile, {
+      worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
+      header: false,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      download: download,
+      complete: function(results, file) {
+        rawData[newFileName] = transpose_to_obj(results.data);
+        updateGlobalFilters(newFileName);
+        $('#file-list').append(`<li data-name="${newFileName}">${newFileName}</li>`);
+        //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
+        $('.standard-file-select').append(`<option value="${newFileName}">${newFileName}</option>`); //what if we already have this?
+        check_and_load_config();
+      }
+    });
   }
-});
+}
 
 $('#global-config-header').click(function(){
   $('#global-config').toggle();
@@ -1066,26 +1088,6 @@ function updateGlobalStyles(data){
     updateObj(globalStyles, [data.column_name[i], data.column_value[i], 'order'], i);
   }
 }
-
-$('#add-url-input').click(function(){
-  //TODO: We should share code with file input I think.
-  let filePath = $('#url-input').val();
-  config.fileNames.push(filePath);
-  Papa.parse(filePath, {
-    worker: true,
-    header: false,
-    dynamicTyping: true,
-    skipEmptyLines: true,
-    download: true,
-    complete: function(results) {
-      rawData[filePath] = transpose_to_obj(results.data);
-      updateGlobalFilters(filePath);
-      $('#file-list').append(`<li data-name="${filePath}">${filePath}</li>`);
-      $('.standard-file-select').append(`<option value="${filePath}">${filePath}</option>`);
-      check_and_load_config();
-    }
-  });
-});
 
 $('#report').on('click','.add-dashboard', function(){
   let dash_idx = config.dashboards.length;
