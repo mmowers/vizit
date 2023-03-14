@@ -200,8 +200,16 @@ text.js-plot-link-container{
   <div id="data-sources">
     <input type="file" id="file-input" name="file-input" multiple="multiple">
     <ul id="file-list">(no files selected)</ul>
-    <input id="url-input" type="text" placeholder="URL to csv">
+    <input id="url-input" type="text" placeholder="URL to csv or json">
     <button id="add-url-input">Load</button>
+    <span class="tooltip-parent">
+      (?)
+      <span class="tooltip">
+        Make sure the URL to the csv or json file is not blocked by
+        <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy" target="_blank">same-origin policy</a>.
+        For example, files stored on github can be accessed via https://raw.githubusercontent.com/ without issue.
+      </span>
+    </span>
   </div>
   <div id="global-config-header">Global Styles and Filters
     <span class="tooltip-parent">
