@@ -193,10 +193,7 @@ text.js-plot-link-container{
     <span class="tooltip-parent">
       (?)
       <span class="tooltip">
-        Only csv and json files are currently allowed, including an optional vizit
-        configuration json file (with filename that must start with "vizit-config" and end with ".json").
-        when loading a json configuration file, all required data files must also be loaded before
-        charts are rendered.
+        Only csv data is currently allowed, as well as an optional vizit configuration .json file.
       </span>
     </span>
   </span>
@@ -1002,7 +999,7 @@ $('#file-input').change(function(evt){
       delete files[newFiles[i].name];
     }
     //If this is a config json file, we will save it in config_load and load
-    if(newFiles[i].name.startsWith('vizit-config') && newFiles[i].name.endsWith('.json')){
+    if(newFiles[i].name.endsWith('.json')){
       const reader = new FileReader();
       reader.onload = function(evt) {
         config_load = JSON.parse(evt.target.result);
