@@ -1607,6 +1607,18 @@ $('body').on('keyup','.filter-val input, input.filter-val', function(){
   }
 });
 
+$('body').on('keyup','#url-input', function(){
+  if (event.keyCode === 13) {
+    $(this).siblings('#add-url-input').click();
+  }
+});
+
+$('#report').on('keyup','.dashboard-title-edit', function(){
+  if (event.keyCode === 13) {
+    $(this).siblings('.dashboard-update-title-descr').click();
+  }
+});
+
 $('body').on('change','.filter-val-text, .filter-val-select', function(){
   $(this).closest('.filter-div').find('.update-fil-common').click();
 });
