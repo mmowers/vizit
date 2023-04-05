@@ -905,6 +905,11 @@ const customStyle = {
     type: 'layout',
     path: ['mapbox','center','lon'],
   },
+  'Map Projection': {
+    type: 'layout',
+    path: ['geo','projection','type'],
+    tooltip: `Default is mercator. More <a target="_blank" href="https://plotly.com/javascript/reference/layout/geo/#layout-geo-projection-type">here</a>`,
+  },
   'Map Zoom': {
     type: 'layout',
     path: ['geo','projection','scale'],
