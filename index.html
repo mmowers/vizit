@@ -365,6 +365,17 @@ const chartTypes = {
     defaultAgg: 'sum',
     aggCol: 'y',
   },
+  'dot (continuous color)':{
+    engine: 'plotly',
+    attr: {
+      type: 'scatter',
+      mode: 'markers',
+    },
+    wdgTypes: ['x','y','color','row','col'],
+    required: ['color'],
+    defaultAgg: 'sum',
+    aggCol: 'color',
+  },
   'line':{
     engine: 'plotly',
     attr: {
@@ -733,6 +744,7 @@ const defaultWdgLabels = {
   y: 'Y axis',
   z: 'Z axis',
   name: 'Color',
+  color: 'Color',
   locations: 'Locations',
   text: 'Hover Text',
   radius: 'Radius (m)',
@@ -931,10 +943,15 @@ const customStyle = {
     type: 'data',
     path: ['line','width'],
   },
-  'Dot Size (px)': {
+  'Marker Size (px)': {
     type: 'data',
     path: ['marker','size'],
     tooltip: 'Default is 6.',
+  },
+  'Marker Symbol': {
+    type: 'data',
+    path: ['marker','symbol'],
+    tooltip: 'Default is "circle". Other options are "square",,, and more options here: ',
   },
   'Dot Max Value': {
     tooltip: 'Specify the data value to be assigned the "max" marker size.',
@@ -2042,6 +2059,11 @@ function updateChart(dash_idx, chart_idx){
             ser.marker.colorscale = rainbow_scl;
             ser.marker.colorbar = default_colorbar;
           }
+          if('color' in trace_config){
+            updateObj(ser, ['marker','color'], ser.color);
+            ser.marker.colorscale = rainbow_scl;
+            ser.marker.colorbar = default_colorbar;
+          }
           if('continuousColor' in chartType){
             ser.colorscale = rainbow_scl;
             ser.colorbar = default_colorbar;
@@ -2060,7 +2082,7 @@ function updateChart(dash_idx, chart_idx){
             }
           } else{
             ser.name = `Data ${i}`;
-            if(!('marker_color' in trace_config)){
+            if(!('marker_color' in trace_config) && !('color' in trace_config)){
               updateObj(ser, ['marker','color'], globalColors[i]);
               updateObj(ser, ['line','color'], globalColors[i]);
             }
@@ -2071,6 +2093,7 @@ function updateChart(dash_idx, chart_idx){
           } else{
             seriesVals.push(ser.name);
             if(!('marker_color' in trace_config) &&
+               !('color' in trace_config) &&
                !(trace_config.type.startsWith('custom region map'))){
               ser.showlegend = true;
             }
@@ -2086,7 +2109,7 @@ function updateChart(dash_idx, chart_idx){
                 continue;
               }
               if(prop in customStyle && 'type' in customStyle[prop] && customStyle[prop]['type'] == 'data'){
-                if(prop == 'Dot Size (px)' && 'marker_size' in trace_config){
+                if(prop == 'Marker Size (px)' && 'marker_size' in trace_config){
                   let marker_size_scaled = ser.marker.size.map(i => i * propVal/6);
                   updateObj(ser, ['marker','size'], marker_size_scaled);
                 } else{
