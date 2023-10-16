@@ -108,6 +108,7 @@ select{
 }
 #global-config-header,
 .filters-label,
+.trace-controls-label,
 .styles-label,
 .filter-name,
 .trace-title,
@@ -1273,7 +1274,7 @@ $('#report').on('change','select[data-config="type"]', function(){
 
 function buildTraceControls(thisTraceDiv, selectFile, chartType){
   thisTraceDiv.children('.trace-ind-controls').remove();
-  let wdgHtml = ``;
+  let wdgHtml = `<div class="trace-controls-label">Widgets</div>`;
 
   //Add custom widgets
   if ('customIn' in chartTypes[chartType]){
@@ -1682,6 +1683,11 @@ $('#report').on('click','.chartstyle-div .update-style', function(){
 
 $('body').on('click','.filters-label, .styles-label, .filter-name, .trace-title', function(){
   $(this).siblings().toggle();
+});
+
+$('body').on('click','.trace-controls-label', function(){
+  $(this).siblings('label').toggle();
+  $(this).siblings('.trace-control').toggle();
 });
 
 function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
