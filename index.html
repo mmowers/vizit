@@ -1292,9 +1292,9 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
   for (const wdgType of chartTypes[chartType].wdgTypes){
     let wdgLabel;
     if('customWdgLabels' in chartTypes[chartType] && wdgType in chartTypes[chartType].customWdgLabels){
-      wdgLabel = chartTypes[chartType].customWdgLabels[wdgType];
+      wdgLabel = `${chartTypes[chartType].customWdgLabels[wdgType]} (${wdgType})`;
     } else{
-      wdgLabel = defaultWdgLabels[wdgType]
+      wdgLabel = `${defaultWdgLabels[wdgType]} (${wdgType})`;
     }
     wdgHtml += `
       <label>${wdgLabel}</label>
