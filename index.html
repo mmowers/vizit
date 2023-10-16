@@ -896,6 +896,12 @@ const customStyle = {
   'Y Max': {
     tooltip: 'Right now, "Y Max" only works with "Y Min" set as well',
   },
+  'Hover Template': {
+    type: 'data',
+    path: ['hovertemplate'], //this only gets used for bar charts
+    tooltip: `E.g. 'X=%{x}, Y=%{y}, Value=%{text}'. HTML allowed as well. More
+              <a target="_blank" href=https://plotly.com/javascript/reference/scatter/#scatter-hovertemplate>here</a>.`,
+  },
   'Mapbox Style': {
     type: 'layout',
     path: ['mapbox','style'],
