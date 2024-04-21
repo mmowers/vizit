@@ -844,6 +844,11 @@ const customStyle = {
   'Z-index': {
     tooltip: 'Enter a number. Higher z-index will bring to front, lower z-index will move to back.',
   },
+  'Hide Legend': {
+    type: 'layout',
+    path: ['showlegend'],
+    tooltip: `Enter 'true' here to hide the legend.`,
+  },
   'Plot Title': {
     type: 'layout',
     path: ['title','text'],
@@ -2145,6 +2150,8 @@ function updateChart(dash_idx, chart_idx){
                   if(propPath[1] == 'title' && propPath[2] == 'text'){
                     propVal = `${rowLabel}${propVal}<br>`;
                   }
+                }else if(prop == 'Hide Legend'){
+                  propVal = propVal == "true" ? false : true; //If Hide Legend is "true", showlegend should be false.
                 }
                 updateObj(plotlyLayout, propPath, propVal);
               }
