@@ -688,7 +688,7 @@ const chartTypes = {
   'lat/lon/width line map (mapbox)':{},
 };
 
-chartTypes['custom region map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['custom region map']));
+chartTypes['custom region map (mapbox)'] = structuredClone(chartTypes['custom region map']);
 chartTypes['custom region map (mapbox)'].attr.type = 'choroplethmapbox';
 chartTypes['custom region map (mapbox)'].layout = {
   width: 800,
@@ -696,7 +696,7 @@ chartTypes['custom region map (mapbox)'].layout = {
   mapbox: {style: 'carto-positron'},
 };
 
-chartTypes['lat/lon/size dot map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['lat/lon/size dot map']));
+chartTypes['lat/lon/size dot map (mapbox)'] = structuredClone(chartTypes['lat/lon/size dot map']);
 chartTypes['lat/lon/size dot map (mapbox)'].attr.type = 'scattermapbox';
 chartTypes['lat/lon/size dot map (mapbox)'].layout = {
   width: 800,
@@ -705,7 +705,7 @@ chartTypes['lat/lon/size dot map (mapbox)'].layout = {
   mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
 };
 
-chartTypes['lat/lon/size dot map (continuous color) (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['lat/lon/size dot map (continuous color)']));
+chartTypes['lat/lon/size dot map (continuous color) (mapbox)'] = structuredClone(chartTypes['lat/lon/size dot map (continuous color)']);
 chartTypes['lat/lon/size dot map (continuous color) (mapbox)'].attr.type = 'scattermapbox';
 chartTypes['lat/lon/size dot map (continuous color) (mapbox)'].layout = {
   width: 800,
@@ -714,7 +714,7 @@ chartTypes['lat/lon/size dot map (continuous color) (mapbox)'].layout = {
   mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
 };
 
-chartTypes['lat/lon/area squares map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['lat/lon/area squares map']));
+chartTypes['lat/lon/area squares map (mapbox)'] = structuredClone(chartTypes['lat/lon/area squares map']);
 chartTypes['lat/lon/area squares map (mapbox)'].attr.type = 'scattermapbox';
 chartTypes['lat/lon/area squares map (mapbox)'].layout = {
   width: 800,
@@ -724,7 +724,7 @@ chartTypes['lat/lon/area squares map (mapbox)'].layout = {
   showlegend: true,
 };
 
-chartTypes['lat/lon/width line map (mapbox)'] = JSON.parse(JSON.stringify(chartTypes['lat/lon/width line map']));
+chartTypes['lat/lon/width line map (mapbox)'] = structuredClone(chartTypes['lat/lon/width line map']);
 chartTypes['lat/lon/width line map (mapbox)'].attr.type = 'scattermapbox';
 chartTypes['lat/lon/width line map (mapbox)'].layout = {
   width: 800,
@@ -1748,7 +1748,7 @@ function applyFilters(data_in, filters_in = {}){
   }
   let startTime = performance.now();
   //else (explicit else not needed because of return statement)
-  let filters = JSON.parse(JSON.stringify(filters_in)); //Make local copy so i don't change the original
+  let filters = structuredClone(filters_in); //Make local copy so i don't change the original
   //Only apply filters that reference columns in data_in
   for(const col in filters_in){
     if(!(col in data_in)) delete filters[col];
@@ -1886,8 +1886,8 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
 }
 function updateChart(dash_idx, chart_idx){
   let startTime = performance.now();
-  const chart_config = JSON.parse(JSON.stringify(config.dashboards[dash_idx].charts[chart_idx])); //Maybe structuredClone would be better...
-  const chart_data = JSON.parse(JSON.stringify(traceData[dash_idx][chart_idx]));
+  const chart_config = structuredClone(config.dashboards[dash_idx].charts[chart_idx]); //Maybe structuredClone would be better...
+  const chart_data = structuredClone(traceData[dash_idx][chart_idx]);
   if($(`#chart-container-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
     $(`#dash-${dash_idx}-chart-${chart_idx}`).prepend(`<div id="chart-container-dash-${dash_idx}-chart-${chart_idx}" class="chart-container"></div>`);
   }
@@ -1928,7 +1928,7 @@ function updateChart(dash_idx, chart_idx){
     let explode_val = explodes[ei];
     if(chartTypes[chart_config.traces[0].type].engine == 'plotly'){
       let plotlyData = [];
-      let plotlyLayout = JSON.parse(JSON.stringify(defaultPlotlyLayout));
+      let plotlyLayout = structuredClone(defaultPlotlyLayout);
       for(let i = 0; i < chart_data.length; i++){
         if(!('subtraces' in chart_data[i])){
           continue;
@@ -2185,7 +2185,7 @@ function updateChart(dash_idx, chart_idx){
           }
           if(trace_config.type.startsWith('lat/lon/width line map')){
             const lat_start=ser.lat_start, lat_end=ser.lat_end, lon_start=ser.lon_start, lon_end=ser.lon_end;
-            let ser_copy = JSON.parse(JSON.stringify(ser));
+            let ser_copy = structuredClone(ser);
             //Remove properties so that it is lighter to copy in for loop below.
             delete ser_copy.lat_start;
             delete ser_copy.lat_end;
@@ -2204,7 +2204,7 @@ function updateChart(dash_idx, chart_idx){
             }
             let nsteps = 10;
             for(let j = 0; j<ser.lat_start.length; j++){
-              let ser_ln_cp = JSON.parse(JSON.stringify(ser_copy));
+              let ser_ln_cp = structuredClone(ser_copy);
               let lat_step = (lat_end[j] - lat_start[j])/nsteps;
               let lon_step = (lon_end[j] - lon_start[j])/nsteps;
               ser_ln_cp.lat = _.range(lat_start[j], lat_end[j] + lat_step, lat_step);
