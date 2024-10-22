@@ -565,7 +565,10 @@ const chartTypes = {
       geo: {
         projection:{
           type: 'mercator',
-        }
+        },
+        showframe: false,
+        showcoastlines: false,
+        //for mercator, the map frame itself is always square, except when you use lataxis/lonaxis: e.g. lonaxis: {range:[-130,-60]}, lataxis: {range:[25,51]}, to focus on the usa. This approach would be used instead of center/scale.
       },
     }
   },
@@ -593,7 +596,9 @@ const chartTypes = {
       geo: {
         projection:{
           type: 'mercator',
-        }
+        },
+        showframe: false,
+        showcoastlines: false,
       },
     }
   },
@@ -621,7 +626,9 @@ const chartTypes = {
       geo: {
         projection:{
           type: 'mercator',
-        }
+        },
+        showframe: false,
+        showcoastlines: false,
       },
     }
   },
@@ -651,7 +658,9 @@ const chartTypes = {
       geo: {
         projection:{
           type: 'mercator',
-        }
+        },
+        showframe: false,
+        showcoastlines: false,
       },
       showlegend: true,
     }
@@ -681,7 +690,9 @@ const chartTypes = {
       geo:{ //https://plotly.com/javascript/reference/layout/geo/
         projection:{
           type: 'mercator',
-        }
+        },
+        showframe: false,
+        showcoastlines: false,
       }
     }
   },
@@ -926,10 +937,12 @@ const customStyle = {
   'Mapbox Center Latitude': {
     type: 'layout',
     path: ['mapbox','center','lat'],
+    tooltip: `Center latitude of contiguous USA is about 40`,
   },
   'Mapbox Center Longitude': {
     type: 'layout',
     path: ['mapbox','center','lon'],
+    tooltip: `Center longitude of contiguous USA is about -98`,
   },
   'Map Projection': {
     type: 'layout',
@@ -944,10 +957,12 @@ const customStyle = {
   'Map Center Latitude': {
     type: 'layout',
     path: ['geo','center','lat'],
+    tooltip: `Center latitude of contiguous USA is about 40`,
   },
   'Map Center Longitude': {
     type: 'layout',
     path: ['geo','center','lon'],
+    tooltip: `Center longitude of contiguous USA is about -98`,
   },
   'Bar Width': {
     type: 'data',
