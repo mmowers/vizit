@@ -568,10 +568,11 @@ const chartTypes = {
         },
         showframe: false,
         showcoastlines: false,
-        //for mercator, the map frame itself is always square, except when you use lataxis/lonaxis: e.g. lonaxis: {range:[-130,-60]}, lataxis: {range:[25,51]}, to focus on the usa. This approach would be used instead of center/scale.
+        //for mercator, the map frame itself is always square, except when you use lataxis/lonaxis, as we do for custom region map usa below
       },
     }
   },
+  'custom region map usa':{}, //Mostly copied, see below
   'custom region map (mapbox)':{}, //Mostly copied, see below
   'lat/lon/size dot map':{
     engine:'plotly',
@@ -698,6 +699,12 @@ const chartTypes = {
   },
   'lat/lon/width line map (mapbox)':{},
 };
+
+chartTypes['custom region map usa'] = structuredClone(chartTypes['custom region map']);
+chartTypes['custom region map usa'].layout.geo.lataxis = {range:[26,50]};
+chartTypes['custom region map usa'].layout.geo.lonaxis = {range:[-125,-66]};
+chartTypes['custom region map usa'].layout.width = 600;
+chartTypes['custom region map usa'].layout.height = 340;
 
 chartTypes['custom region map (mapbox)'] = structuredClone(chartTypes['custom region map']);
 chartTypes['custom region map (mapbox)'].attr.type = 'choroplethmapbox';
