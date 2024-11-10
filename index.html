@@ -477,6 +477,7 @@ const chartTypes = {
       boxmean: true,
       pointpos: 0,
       boxpoints: false,
+      showwhiskers: true,
     },
     wdgTypes: ['y','x','name','row','col'],
     customWdgLabels: {
@@ -1008,6 +1009,12 @@ const customStyle = {
     path: ['boxpoints'],
     tooltip: `Only for boxplots. Either "all", "outliers", or "suspectedoutliers". Default is false.
               More <a target="_blank" href="https://plotly.com/javascript/reference/box/#box-boxpoints">here</a>.`,
+  },
+  'Boxplot Show Whiskers': {
+    type: 'data',
+    path: ['showwhiskers'],
+    tooltip: `Only for boxplots. Default is true.
+              More <a target="_blank" href="https://plotly.com/javascript/reference/box/#box-showwhiskers">here</a>.`,
   },
   'Colorscale (marker)': {
     type: 'data',
@@ -2157,6 +2164,8 @@ function updateChart(dash_idx, chart_idx){
                 } else{
                   if(propVal == 'true'){
                     propVal = true;
+                  } else if(propVal == 'false'){
+                    propVal = false;
                   }
                   updateObj(ser, customStyle[prop].path, propVal);
                 }
