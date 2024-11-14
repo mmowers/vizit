@@ -863,10 +863,10 @@ const customStyle = {
   'Z-index': {
     tooltip: 'Enter a number. Higher z-index will bring to front, lower z-index will move to back.',
   },
-  'Hide Legend': {
+  'Show Legend': {
     type: 'layout',
     path: ['showlegend'],
-    tooltip: `Enter 'true' here to hide the legend.`,
+    tooltip: `Enter 'false' here to hide the legend.`,
   },
   'Plot Title': {
     type: 'layout',
@@ -890,6 +890,11 @@ const customStyle = {
   'X Title Font Size (pt)': {
     type: 'layout',
     path: ['xaxis','title','font','size'],
+  },
+  'Show X Tick Labels': {
+    type: 'layout',
+    path: ['xaxis','showticklabels'],
+    tooltip: `Enter 'false' here to hide x tick labels.`,
   },
   'X Tick Font Size (pt)': {
     type: 'layout',
@@ -915,6 +920,11 @@ const customStyle = {
   'Y Title Font Size (pt)': {
     type: 'layout',
     path: ['yaxis','title','font','size'],
+  },
+  'Show Y Tick Labels': {
+    type: 'layout',
+    path: ['yaxis','showticklabels'],
+    tooltip: `Enter 'false' here to hide y tick labels.`,
   },
   'Y Tick Font Size (pt)': {
     type: 'layout',
@@ -2163,16 +2173,16 @@ function updateChart(dash_idx, chart_idx){
               if(propVal == ''){
                 continue;
               }
+              if(propVal == 'true'){
+                propVal = true;
+              } else if(propVal == 'false'){
+                propVal = false;
+              }
               if(prop in customStyle && 'type' in customStyle[prop] && customStyle[prop]['type'] == 'data'){
                 if(prop == 'Marker Size (px)' && 'marker_size' in trace_config){
                   let marker_size_scaled = ser.marker.size.map(i => i * propVal/6);
                   updateObj(ser, ['marker','size'], marker_size_scaled);
                 } else{
-                  if(propVal == 'true'){
-                    propVal = true;
-                  } else if(propVal == 'false'){
-                    propVal = false;
-                  }
                   updateObj(ser, customStyle[prop].path, propVal);
                 }
               } else if(prop in customStyle && 'type' in customStyle[prop] && customStyle[prop]['type'] == 'layout'){
@@ -2187,8 +2197,6 @@ function updateChart(dash_idx, chart_idx){
                   if(propPath[1] == 'title' && propPath[2] == 'text'){
                     propVal = `${rowLabel}${propVal}<br>`;
                   }
-                }else if(prop == 'Hide Legend'){
-                  propVal = propVal == "true" ? false : true; //If Hide Legend is "true", showlegend should be false.
                 }
                 updateObj(plotlyLayout, propPath, propVal);
               }
