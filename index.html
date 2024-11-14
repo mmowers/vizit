@@ -881,6 +881,12 @@ const customStyle = {
     type: 'layout',
     path: ['xaxis','title','text'],
   },
+  'X Type': {
+    type: 'layout',
+    path: ['xaxis','type'],
+    tooltip: `E.g. 'date'. More
+              <a target="_blank" href="https://plotly.com/javascript/reference/layout/xaxis/#layout-xaxis-type">here</a>.`,
+  },
   'X Title Font Size (pt)': {
     type: 'layout',
     path: ['xaxis','title','font','size'],
@@ -927,7 +933,7 @@ const customStyle = {
     type: 'data',
     path: ['hovertemplate'], //this only gets used for bar charts
     tooltip: `E.g. 'X=%{x}, Y=%{y}, Value=%{text}'. HTML allowed as well. More
-              <a target="_blank" href=https://plotly.com/javascript/reference/scatter/#scatter-hovertemplate>here</a>.`,
+              <a target="_blank" href="https://plotly.com/javascript/reference/scatter/#scatter-hovertemplate">here</a>.`,
   },
   'Mapbox Style': {
     type: 'layout',
@@ -989,7 +995,7 @@ const customStyle = {
     type: 'data',
     path: ['marker','symbol'],
     tooltip: `Default is "circle". Other options are "square", "triangle-up" and more options
-    <a target="_blank" href=https://plotly.com/javascript/reference/scatter/#scatter-marker-symbol>here</a>.`,
+    <a target="_blank" href="https://plotly.com/javascript/reference/scatter/#scatter-marker-symbol">here</a>.`,
   },
   'Dot Max Value': {
     tooltip: 'Specify the data value to be assigned the "max" marker size.',
