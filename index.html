@@ -996,6 +996,11 @@ const customStyle = {
     type: 'data',
     path: ['line','width'],
   },
+  'Line Color': {
+    type: 'data',
+    path: ['line','color'],
+    tooltip: `Either a color name like "red" or full rbg like "rgb(255, 0, 0)". More <a target="_blank" href="https://plotly.com/javascript/reference/scatter/#scatter-line-color">here</a>.`,
+  },
   'Marker Size (px)': {
     type: 'data',
     path: ['marker','size'],
@@ -1006,6 +1011,11 @@ const customStyle = {
     path: ['marker','symbol'],
     tooltip: `Default is "circle". Other options are "square", "triangle-up" and more options
     <a target="_blank" href="https://plotly.com/javascript/reference/scatter/#scatter-marker-symbol">here</a>.`,
+  },
+  'Marker Color': {
+    type: 'data',
+    path: ['marker','color'],
+    tooltip: `Either a color name like "red" or full rbg like "rgb(255, 0, 0)". More <a target="_blank" href="https://plotly.com/javascript/reference/scatter/#scatter-marker-color">here</a>.`,
   },
   'Dot Max Value': {
     tooltip: 'Specify the data value to be assigned the "max" marker size.',
