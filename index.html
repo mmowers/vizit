@@ -555,7 +555,7 @@ const chartTypes = {
     wdgTypes: ['locations','z','text'],
     required:['geojson','locations','z'],
     customWdgLabels: {
-      z: 'Color'
+      z: 'Color (z)'
     },
     defaultAgg: 'sum',
     aggCol: 'z',
@@ -938,6 +938,9 @@ const customStyle = {
   },
   'Y Max': {
     tooltip: 'Right now, "Y Max" only works with "Y Min" set as well',
+  },
+  'Z Scale': {
+    tooltip: 'Enter a number to scale the z values',
   },
   'Hover Template': {
     type: 'data',
@@ -2215,6 +2218,8 @@ function updateChart(dash_idx, chart_idx){
                 ser['x'] = ser['x'].map(x => x * propVal);
               } else if(prop == 'Y Scale'){
                 ser['y'] = ser['y'].map(y => y * propVal);
+              } else if(prop == 'Z Scale'){
+                ser['z'] = ser['z'].map(z => z * propVal);
               } else if(prop == 'X Min'){
                 if(!('range' in plotlyLayout[layoutXaxis])) plotlyLayout[layoutXaxis].range = [null,null];
                 plotlyLayout.xaxis.range[0] = Number(propVal);
