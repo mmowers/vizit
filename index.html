@@ -35,6 +35,7 @@ select{
 }
 .dashboard-title-descr-outer{
   margin-top: 20px;
+  position: relative;
 }
 .dashboard-title,
 .dashboard-descr{
@@ -47,13 +48,56 @@ select{
   max-width: 800px;
   margin: auto;
 }
-.dashboard-title-descr-outer:hover .dashboard-title-descr-edit{
+.dashboard-title-descr-edit.expanded{
   display:block;
   position:absolute;
   background-color: white;
   left: 0;
   right: 0;
   z-index: 10;
+}
+.dashboard-edit-icon,
+.dashboard-collapse-icon{
+  display: none;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  cursor: pointer;
+  font-size: 20px;
+  color: #0088cc;
+  background-color: white;
+  padding: 5px;
+  border-radius: 3px;
+  border: 1px solid #0088cc;
+  z-index: 11;
+}
+.dashboard-title-descr-outer:hover .dashboard-edit-icon{
+  display: inline-block;
+}
+.dashboard-collapse-icon{
+  top: 5px;
+  right: 5px;
+}
+.dashboard-title-descr-edit.expanded ~ .dashboard-collapse-icon{
+  display: inline-block;
+}
+.dashboard-title-descr-edit.expanded ~ .dashboard-edit-icon{
+  display: none;
+}
+/* On mobile devices, keep tap behavior */
+@media (hover: none) and (pointer: coarse) {
+  .dashboard-edit-icon,
+  .dashboard-collapse-icon{
+    display: none !important;
+  }
+  .dashboard-title-descr-outer:active .dashboard-title-descr-edit{
+    display:block;
+    position:absolute;
+    background-color: white;
+    left: 0;
+    right: 0;
+    z-index: 10;
+  }
 }
 .add-dashboard,
 .add-chart,
@@ -97,11 +141,48 @@ select{
 .chart-container + .chart-controls {
   display: none;
 }
-.chart-outer:hover .chart-container + .chart-controls{
+.chart-container + .chart-controls.expanded{
   display:block;
   position: absolute;
   background-color: white;
   z-index: 10;
+}
+.chart-edit-icon,
+.chart-collapse-icon{
+  display: none;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  cursor: pointer;
+  font-size: 20px;
+  color: #0088cc;
+  background-color: white;
+  padding: 5px;
+  border-radius: 3px;
+  border: 1px solid #0088cc;
+  z-index: 11;
+}
+.chart-outer:hover .chart-edit-icon{
+  display: inline-block;
+}
+.chart-controls.expanded ~ .chart-collapse-icon{
+  display: inline-block;
+}
+.chart-controls.expanded ~ .chart-edit-icon{
+  display: none;
+}
+/* On mobile devices, keep tap behavior */
+@media (hover: none) and (pointer: coarse) {
+  .chart-edit-icon,
+  .chart-collapse-icon{
+    display: none !important;
+  }
+  .chart-outer:active .chart-container + .chart-controls{
+    display:block;
+    position: absolute;
+    background-color: white;
+    z-index: 10;
+  }
 }
 .chart-controls,
 .filter-div,
@@ -1208,6 +1289,8 @@ $('#report').on('click','.add-dashboard', function(){
           <textarea class="dashboard-descr-edit" placeholder="Edit dashboard description"></textarea><br>
           <button class="dashboard-update-title-descr">Update title/description</button>
         </div>
+        <span class="dashboard-edit-icon" title="Edit title/description">✏️</span>
+        <span class="dashboard-collapse-icon" title="Collapse">▲</span>
       </div>
       <button class="add-chart">Add Chart</button>
       <button class="remove-dashboard">Remove Dashboard</button>
@@ -1256,6 +1339,8 @@ $('#report').on('click','.add-chart', function(){
         <button class="add-trace">Add Data</button>
         <button class="remove-chart">Remove Chart</button>
       </div>
+      <span class="chart-edit-icon" title="Edit chart">✏️</span>
+      <span class="chart-collapse-icon" title="Collapse">▲</span>
     </div>
   `;
   $(this).before(html);
@@ -1754,6 +1839,89 @@ $('body').on('click','.trace-controls-label', function(){
   $(this).siblings('label').toggle();
   $(this).siblings('.trace-control').toggle();
 });
+
+// Handle edit icon clicks for dashboard title/description
+$('#report').on('click', '.dashboard-edit-icon', function(e){
+  e.stopPropagation();
+  $(this).siblings('.dashboard-title-descr-edit').addClass('expanded');
+});
+
+// Handle collapse icon clicks for dashboard title/description
+$('#report').on('click', '.dashboard-collapse-icon', function(e){
+  e.stopPropagation();
+  $(this).siblings('.dashboard-title-descr-edit').removeClass('expanded');
+});
+
+// Handle edit icon clicks for charts
+$('#report').on('click', '.chart-edit-icon', function(e){
+  e.stopPropagation();
+  $(this).siblings('.chart-controls').addClass('expanded');
+});
+
+// Handle collapse icon clicks for charts
+$('#report').on('click', '.chart-collapse-icon', function(e){
+  e.stopPropagation();
+  $(this).siblings('.chart-controls').removeClass('expanded');
+});
+
+// Handle clicking outside to close controls
+$(document).on('click', function(e){
+  // Check if click is outside dashboard controls
+  if(!$(e.target).closest('.dashboard-title-descr-outer').length){
+    $('.dashboard-title-descr-edit').removeClass('expanded');
+  }
+  // Check if click is outside chart controls
+  if(!$(e.target).closest('.chart-outer').length){
+    $('.chart-controls').removeClass('expanded');
+  }
+});
+
+// Prevent clicks inside controls from closing them
+$('#report').on('click', '.dashboard-title-descr-edit, .chart-controls', function(e){
+  e.stopPropagation();
+});
+
+// On mobile devices, handle tap to expand/collapse
+if(window.matchMedia('(hover: none) and (pointer: coarse)').matches){
+  let dashboardTapTimeout = null;
+  let chartTapTimeout = null;
+  
+  $('#report').on('click', '.dashboard-title-descr-outer', function(e){
+    if($(e.target).closest('.dashboard-title-descr-edit').length){
+      return; // Don't toggle if clicking inside edit area
+    }
+    e.stopPropagation();
+    const editDiv = $(this).find('.dashboard-title-descr-edit');
+    if(editDiv.hasClass('expanded')){
+      editDiv.removeClass('expanded');
+    } else {
+      $('.dashboard-title-descr-edit').removeClass('expanded');
+      editDiv.addClass('expanded');
+      clearTimeout(dashboardTapTimeout);
+      dashboardTapTimeout = setTimeout(function(){
+        editDiv.removeClass('expanded');
+      }, 5000); // Auto-close after 5 seconds
+    }
+  });
+  
+  $('#report').on('click', '.chart-outer', function(e){
+    if($(e.target).closest('.chart-controls').length){
+      return; // Don't toggle if clicking inside controls
+    }
+    e.stopPropagation();
+    const controls = $(this).find('.chart-controls');
+    if(controls.hasClass('expanded')){
+      controls.removeClass('expanded');
+    } else {
+      $('.chart-controls').removeClass('expanded');
+      controls.addClass('expanded');
+      clearTimeout(chartTapTimeout);
+      chartTapTimeout = setTimeout(function(){
+        controls.removeClass('expanded');
+      }, 5000); // Auto-close after 5 seconds
+    }
+  });
+}
 
 function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
   //data_in looks like {col1:[], col2:[],...}
