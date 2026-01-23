@@ -35,6 +35,16 @@ select{
 }
 .dashboard-title-descr-outer{
   margin-top: 20px;
+  position: relative;
+  display: table;
+  text-align: left;
+  margin-left: auto;
+  margin-right: auto;
+  padding-top: 26px;
+}
+.dashboard-title-descr{
+  display: inline-block;
+  text-align: left;
 }
 .dashboard-title,
 .dashboard-descr{
@@ -42,12 +52,36 @@ select{
   padding-bottom: 10px;
   max-width: 800px;
 }
+.edit-toggle{
+  display: inline-block;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+  cursor: pointer;
+  pointer-events: none;
+  font-size: 0.85em;
+  color: #0088cc;
+  border: 1px solid #0088cc;
+  border-radius: 4px;
+  padding: 2px 8px;
+  background: white;
+}
+.dashboard-title-descr-outer:hover .edit-toggle,
+.dashboard-title-descr-outer.is-open .edit-toggle,
+.chart-outer:hover .edit-toggle,
+.chart-outer.is-open .edit-toggle{
+  opacity: 1;
+  pointer-events: auto;
+}
+.dashboard-title-descr-outer.is-open .edit-toggle,
+.chart-outer.is-open .edit-toggle{
+  text-decoration: line-through;
+}
 .dashboard-title-descr-edit{
   display: none;
   max-width: 800px;
   margin: auto;
 }
-.dashboard-title-descr-outer:hover .dashboard-title-descr-edit{
+.dashboard-title-descr-outer.is-open .dashboard-title-descr-edit{
   display:block;
   position:absolute;
   background-color: white;
@@ -77,6 +111,20 @@ select{
 .chart-outer{
   display: inline-block;
   position: relative;
+  padding-top: 26px;
+}
+.chart-outer.chart-placeholder{
+  min-width: 160px;
+  min-height: 32px;
+  border: 1px dashed #d9d9d9;
+  background-color: #fafafa;
+}
+.dashboard-title-descr-outer .edit-toggle,
+.chart-outer .edit-toggle{
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 12;
 }
 .chart{
   width: 400px;
@@ -93,11 +141,9 @@ select{
 .chart-controls{
   width: 100%;
   max-width: 70vw;
-}
-.chart-container + .chart-controls {
   display: none;
 }
-.chart-outer:hover .chart-container + .chart-controls{
+.chart-outer.is-open .chart-controls{
   display:block;
   position: absolute;
   background-color: white;
@@ -346,6 +392,27 @@ let plotlySchema = Plotly.PlotSchema.get(); //I found this on a forum: https://c
 // Single page figure reference: https://plotly.com/javascript/reference/ (this has the schema info as well)
 // Function reference: https://plotly.com/javascript/plotlyjs-function-reference (including image download, another resource is: https://plotly.com/javascript/static-image-export/)
 // Configuration options: https://plotly.com/javascript/configuration-options/
+
+function closeEditPanels(){
+  $('.dashboard-title-descr-outer.is-open, .chart-outer.is-open').removeClass('is-open');
+}
+
+$(document).on('click', function(e){
+  if($(e.target).closest('.chart-controls, .dashboard-title-descr-edit').length){
+    return;
+  }
+  closeEditPanels();
+});
+
+$('#report').on('click', '.edit-toggle', function(e){
+  e.stopPropagation();
+  const panel = $(this).closest('.dashboard-title-descr-outer, .chart-outer');
+  const wasOpen = panel.hasClass('is-open');
+  closeEditPanels();
+  if(!wasOpen){
+    panel.addClass('is-open');
+  }
+});
 
 // This was the old way to get the schema (I found it at https://plotly.com/javascript/reference/index/): Uncomment the following section to grab plotly schema (synchronously). First set the global configs to synchronous, then json request, then flip back to async.
 // let plotlySchema = {};
@@ -1192,7 +1259,8 @@ function updateGlobalStyles(data){
   }
 }
 
-$('#report').on('click','.add-dashboard', function(){
+$('#report').on('click','.add-dashboard', function(e){
+  e.stopPropagation();
   let dash_idx = config.dashboards.length;
   config.dashboards[dash_idx] = {charts:[]};
   traceData[dash_idx] = [];
@@ -1202,6 +1270,7 @@ $('#report').on('click','.add-dashboard', function(){
         <div class="dashboard-title-descr">
           <h2 class="dashboard-title">Dashboard ${dash_idx}</h2>
           <p class="dashboard-descr"></p>
+          <span class="edit-toggle" title="Edit dashboard title/description">Edit</span>
         </div>
         <div class="dashboard-title-descr-edit">
           <input type="text" class="dashboard-title-edit" placeholder="Edit dashboard title"><br>
@@ -1233,7 +1302,8 @@ $('#report').on('click', '.dashboard-update-title-descr', function(){
   $(this).closest('.dashboard-title-descr-outer').find('.dashboard-descr').html(description);
 });
 
-$('#report').on('click','.add-chart', function(){
+$('#report').on('click','.add-chart', function(e){
+  e.stopPropagation();
   let dash_idx = get_idx(this);
   let chart_idx = config.dashboards[dash_idx].charts.length;
   config.dashboards[dash_idx].charts[chart_idx] = {traces:[]};
@@ -1245,7 +1315,8 @@ $('#report').on('click','.add-chart', function(){
   }
   //Build html
   let html = `
-    <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-outer">
+    <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-outer chart-placeholder">
+      <span class="edit-toggle" title="Edit chart controls">Edit</span>
       <div class="chart-controls">
         <div class="chart-title">Chart ${chart_idx}</div>
         <div class="chartstyle-div">
@@ -1259,6 +1330,9 @@ $('#report').on('click','.add-chart', function(){
     </div>
   `;
   $(this).before(html);
+  closeEditPanels();
+  const newChart = $(`#dash-${dash_idx}-chart-${chart_idx}`);
+  newChart.addClass('is-open');
   //Automatically click to add the first trace
   $(`#dash-${dash_idx}-chart-${chart_idx} .add-trace`).click();
 });
@@ -1949,6 +2023,7 @@ function updateChart(dash_idx, chart_idx){
   if($(`#chart-container-dash-${dash_idx}-chart-${chart_idx}`).length == 0){
     $(`#dash-${dash_idx}-chart-${chart_idx}`).prepend(`<div id="chart-container-dash-${dash_idx}-chart-${chart_idx}" class="chart-container"></div>`);
   }
+  $(`#dash-${dash_idx}-chart-${chart_idx}`).removeClass('chart-placeholder');
   //Add styling
   if('style' in chart_config && 'Move Chart Up/Down (px)' in chart_config.style){
     $(`#dash-${dash_idx}-chart-${chart_idx}`).css('top',chart_config.style['Move Chart Up/Down (px)'] + 'px');
