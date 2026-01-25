@@ -52,7 +52,8 @@ select{
   padding-bottom: 10px;
   max-width: 800px;
 }
-.edit-toggle{
+.edit-toggle,
+.duplicate-toggle{
   display: inline-block;
   opacity: 0;
   transition: opacity 0.15s ease-in-out;
@@ -68,7 +69,9 @@ select{
 .dashboard-title-descr-outer:hover .edit-toggle,
 .dashboard-title-descr-outer.is-open .edit-toggle,
 .chart-outer:hover .edit-toggle,
-.chart-outer.is-open .edit-toggle{
+.chart-outer.is-open .edit-toggle,
+.chart-outer:hover .duplicate-toggle,
+.chart-outer.is-open .duplicate-toggle{
   opacity: 1;
   pointer-events: auto;
 }
@@ -119,8 +122,16 @@ select{
   border: 1px dashed #d9d9d9;
   background-color: #fafafa;
 }
-.dashboard-title-descr-outer .edit-toggle,
-.chart-outer .edit-toggle{
+.chart-actions{
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: flex;
+  gap: 6px;
+}
+.dashboard-title-descr-outer .edit-toggle{
   position: absolute;
   top: 4px;
   left: 50%;
@@ -413,6 +424,26 @@ $('#report').on('click', '.edit-toggle', function(e){
   if(!wasOpen){
     panel.addClass('is-open');
   }
+});
+
+$('#report').on('click', '.duplicate-toggle', function(e){
+  e.stopPropagation();
+  const [srcDashIdx, srcChartIdx] = get_idx(this);
+  const chartConfig = structuredClone(config.dashboards[srcDashIdx].charts[srcChartIdx]);
+  let targetDashIdx = config.dashboards.length - 1;
+  while(targetDashIdx >= 0 && $.isEmptyObject(config.dashboards[targetDashIdx])){
+    targetDashIdx--;
+  }
+  if(targetDashIdx < 0){
+    return;
+  }
+  const addChartBtn = $(`[data-dashboardID="${targetDashIdx}"] .add-chart`);
+  if(addChartBtn.length === 0){
+    return;
+  }
+  addChartBtn.click();
+  const newChartIdx = config.dashboards[targetDashIdx].charts.length - 1;
+  applyChartConfig(targetDashIdx, newChartIdx, chartConfig);
 });
 
 // This was the old way to get the schema (I found it at https://plotly.com/javascript/reference/index/): Uncomment the following section to grab plotly schema (synchronously). First set the global configs to synchronous, then json request, then flip back to async.
@@ -1317,7 +1348,10 @@ $('#report').on('click','.add-chart', function(e){
   //Build html
   let html = `
     <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-outer chart-placeholder">
-      <span class="edit-toggle" title="Edit chart controls">Edit</span>
+      <div class="chart-actions">
+        <span class="edit-toggle" title="Edit chart controls">Edit</span>
+        <span class="duplicate-toggle" title="Duplicate chart">Duplicate</span>
+      </div>
       <div class="chart-controls">
         <div class="chart-title">Chart ${chart_idx}</div>
         <div class="chartstyle-div">
@@ -2654,6 +2688,84 @@ function check_and_load_config(){
   }
   if(config_load.fileNames.every(val => val in rawData)){
     $(document).ready(load_config);
+  }
+}
+
+function applyChartConfig(dash_idx, chart_idx, chart_config){
+  if(!chart_config || $.isEmptyObject(chart_config)){
+    return;
+  }
+  if('style' in chart_config){
+    $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .styles-label`).click();
+    for (const key in chart_config['style']){
+      $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .add-style`).val(key).change();
+      $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .style-outer .style-input`).last().val(chart_config['style'][key]).change();
+    }
+    $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .update-style`).click();
+    $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .styles-label`).click();
+  }
+  let ti = 0;
+  if('traces' in chart_config){
+    for(const trc of chart_config.traces){
+      if($.isEmptyObject(trc)){
+        continue;
+      }
+      if(ti > 0){
+        $(`#dash-${dash_idx}-chart-${chart_idx} .add-trace`).click();
+      }
+      if('dataSource' in trc){
+        $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .data-source`).val(trc['dataSource']).change();
+      }
+      if('type' in trc){
+        $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] [data-config="type"]`).val(trc['type']).change();
+      }
+      if('filter' in trc){
+        $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .filters-label`).click();
+        for (const key in trc['filter']){
+          $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .add-filter`).val(key).change();
+          $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .filter-type`).last().val(trc['filter'][key]['filter_type']).change();
+          if(['include','exclude'].includes(trc.filter[key].filter_type)){
+            $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .filter-val`).last().find('label').each(function(){
+              if(trc['filter'][key]['filter_val'].map(String).includes($(this).text())){
+                $(this).children('input').prop( "checked", true );
+              }
+            });
+          } else if(trc.filter[key].filter_type == 'select'){
+            $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .filter-val`).last().children('option')
+            .filter(function(){return $(this).text() === trc.filter[key].filter_val;})
+            .prop("selected", true);
+          } else if(trc.filter[key].filter_type == 'slider'){
+            $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .filter-slider-select`).last().children('option')
+            .filter(function(){return $(this).text() === trc.filter[key].filter_val;})
+            .prop("selected", true).trigger('load_config_change');
+          } else{
+            $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .filter-val`).last().val(trc.filter[key].filter_val);
+          }
+        }
+        $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .update-filter`).click();
+        $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .filters-label`).click();
+      }
+      if('type' in trc && trc.type in chartTypes){
+        let allWdg = chartTypes[trc.type].wdgTypes.concat(['agg']);
+        if('customIn' in chartTypes[trc.type]){
+          allWdg = allWdg.concat(Object.keys(chartTypes[trc.type].customIn));
+        }
+        for (const key in trc){
+          if(chartTypes[trc.type].required.includes(key)){
+            continue;
+          }
+          if(allWdg.includes(key)){
+            $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] [data-config="${key}"]`).val(trc[key]).change();
+          }
+        }
+        for (const key in trc){
+          if(chartTypes[trc.type].required.includes(key)){
+            $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] [data-config="${key}"]`).val(trc[key]).change();
+          }
+        }
+      }
+      ti++;
+    }
   }
 }
 
