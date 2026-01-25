@@ -1201,6 +1201,8 @@ $('#file-input').change(function(evt){
   for(let i = 0; i < newFiles.length; i++){
     read_file(newFiles[i]);
   }
+  //Allow re-selecting the same file name to trigger another update
+  evt.target.value = '';
 });
 
 $('#add-url-input').click(function(){
@@ -1255,7 +1257,10 @@ function read_file(newFile, type='file'){
         updateGlobalFilters(newFileName);
         $('#file-list').append(`<li data-name="${newFileName}">${newFileName}</li>`);
         //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
-        $('.standard-file-select').append(`<option value="${newFileName}">${newFileName}</option>`); //what if we already have this?
+        if($(`.standard-file-select option[value="${newFileName}"]`).length == 0){
+          $('.standard-file-select').append(`<option value="${newFileName}">${newFileName}</option>`);
+        }
+        refreshChartsForFile(newFileName);
         check_and_load_config();
       }
     });
@@ -1548,6 +1553,40 @@ function updateGlobalFilters(newFile){
   for (const col in rawData[newFile]){
     if($(`#add-global-filter option[value="${col}"]`).length == 0){
       $(`#add-global-filter`).append(`<option value="${col}">${col}</option>`);
+    }
+  }
+}
+
+function refreshChartsForFile(fileName){
+  if(!(fileName in rawData)){
+    return;
+  }
+  for (const [dash_idx, dash] of traceData.entries()) {
+    for (const [chart_idx, chart] of traceData[dash_idx].entries()) {
+      for (const [trace_idx, trace] of traceData[dash_idx][chart_idx].entries()) {
+        const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+        if(!trace_config || trace_config.dataSource != fileName){
+          continue;
+        }
+        const raw_data = rawData[fileName];
+        const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
+        const allFilters = {...(config.filter || {}), ...(trace_config.filter || {})};
+        thisTraceData.filteredData = applyFilters(raw_data, allFilters);
+        thisTraceData.aggData = thisTraceData.filteredData;
+        if('type' in trace_config &&
+          chartTypes[trace_config.type].required.every((val) => val in trace_config)
+        ){
+          if('agg' in trace_config && trace_config.agg != 'none'){
+            const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
+            const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
+              wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
+              wdg => trace_config[wdg]);
+            thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col);
+          }
+          updateTraceData(dash_idx, chart_idx, trace_idx);
+          updateChart(dash_idx, chart_idx);
+        }
+      }
     }
   }
 }
