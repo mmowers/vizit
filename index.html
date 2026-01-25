@@ -1298,6 +1298,7 @@ function updateGlobalStyles(data){
 
 $('#report').on('click','.add-dashboard', function(e){
   e.stopPropagation();
+  const shouldOpenFirstChart = !!e.originalEvent;
   let dash_idx = config.dashboards.length;
   config.dashboards[dash_idx] = {charts:[]};
   traceData[dash_idx] = [];
@@ -1323,7 +1324,7 @@ $('#report').on('click','.add-dashboard', function(e){
     </div>
   `);
   //Automatically click to add the first chart
-  $(`[data-dashboardID="${dash_idx}"] .add-chart`).click();
+  $(`[data-dashboardID="${dash_idx}"] .add-chart`).trigger('click', [{openControls: shouldOpenFirstChart}]);
 });
 
 $('#report').on('click','.remove-dashboard', function(){
@@ -1342,12 +1343,13 @@ $('#report').on('click', '.dashboard-update-title-descr', function(){
   $(this).closest('.dashboard-title-descr-outer').find('.dashboard-descr').html(description);
 });
 
-$('#report').on('click','.add-chart', function(e){
+$('#report').on('click','.add-chart', function(e, options){
   e.stopPropagation();
   let dash_idx = get_idx(this);
   let chart_idx = config.dashboards[dash_idx].charts.length;
   config.dashboards[dash_idx].charts[chart_idx] = {traces:[]};
   traceData[dash_idx][chart_idx] = [];
+  const shouldOpenControls = options && 'openControls' in options ? options.openControls : !!e.originalEvent;
   //Custom styling
   let styleOptionsHTML = `<option value="none">Add Style</option>`;
   for (const key in customStyle){
@@ -1374,6 +1376,10 @@ $('#report').on('click','.add-chart', function(e){
   `;
   $(this).before(html);
   closeEditPanels();
+  const newChart = $(`#dash-${dash_idx}-chart-${chart_idx}`);
+  if(shouldOpenControls){
+    newChart.addClass('is-open');
+  }
   //Automatically click to add the first trace
   $(`#dash-${dash_idx}-chart-${chart_idx} .add-trace`).click();
 });
