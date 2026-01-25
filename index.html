@@ -430,13 +430,7 @@ $('#report').on('click', '.duplicate-toggle', function(e){
   e.stopPropagation();
   const [srcDashIdx, srcChartIdx] = get_idx(this);
   const chartConfig = structuredClone(config.dashboards[srcDashIdx].charts[srcChartIdx]);
-  let targetDashIdx = config.dashboards.length - 1;
-  while(targetDashIdx >= 0 && $.isEmptyObject(config.dashboards[targetDashIdx])){
-    targetDashIdx--;
-  }
-  if(targetDashIdx < 0){
-    return;
-  }
+  const targetDashIdx = srcDashIdx;
   const addChartBtn = $(`[data-dashboardID="${targetDashIdx}"] .add-chart`);
   if(addChartBtn.length === 0){
     return;
