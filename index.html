@@ -1557,6 +1557,26 @@ function updateGlobalFilters(newFile){
   }
 }
 
+function refreshTraceFromFilters(dash_idx, chart_idx, trace_idx, trace_config, raw_data){
+  const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
+  const allFilters = {...(config.filter || {}), ...(trace_config.filter || {})};
+  thisTraceData.filteredData = applyFilters(raw_data, allFilters);
+  thisTraceData.aggData = thisTraceData.filteredData;
+  if('type' in trace_config &&
+    chartTypes[trace_config.type].required.every((val) => val in trace_config)
+  ){
+    if('agg' in trace_config && trace_config.agg != 'none'){
+      const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
+      const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
+        wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
+        wdg => trace_config[wdg]);
+      thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col);
+    }
+    updateTraceData(dash_idx, chart_idx, trace_idx);
+    updateChart(dash_idx, chart_idx);
+  }
+}
+
 function refreshChartsForFile(fileName){
   if(!(fileName in rawData)){
     return;
@@ -1569,23 +1589,7 @@ function refreshChartsForFile(fileName){
           continue;
         }
         const raw_data = rawData[fileName];
-        const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
-        const allFilters = {...(config.filter || {}), ...(trace_config.filter || {})};
-        thisTraceData.filteredData = applyFilters(raw_data, allFilters);
-        thisTraceData.aggData = thisTraceData.filteredData;
-        if('type' in trace_config &&
-          chartTypes[trace_config.type].required.every((val) => val in trace_config)
-        ){
-          if('agg' in trace_config && trace_config.agg != 'none'){
-            const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
-            const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
-              wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
-              wdg => trace_config[wdg]);
-            thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col);
-          }
-          updateTraceData(dash_idx, chart_idx, trace_idx);
-          updateChart(dash_idx, chart_idx);
-        }
+        refreshTraceFromFilters(dash_idx, chart_idx, trace_idx, trace_config, raw_data);
       }
     }
   }
@@ -1760,29 +1764,12 @@ $('#update-global-filter').click(function(){
       config.filter[$(this).children('.filter-name').text()] = {'filter_type':$(this).children('.filter-type').val(), 'filter_val':filterVal};
     }
   });
-  let trace_config, raw_data, thisTraceData, allFilters;
   for (const [dash_idx, dash] of traceData.entries()) {
     for (const [chart_idx, chart] of traceData[dash_idx].entries()) {
       for (const [trace_idx, trace] of traceData[dash_idx][chart_idx].entries()) {
-        trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-        raw_data = rawData[trace_config.dataSource];
-        thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
-        allFilters = {...config.filter, ...trace_config.filter}; //start with global, then overwrite with trace
-        thisTraceData.filteredData = applyFilters(raw_data, allFilters);
-        thisTraceData.aggData = thisTraceData.filteredData;
-        if('type' in trace_config &&
-          chartTypes[trace_config.type].required.every((val) => val in trace_config)
-        ){
-          if('agg' in trace_config && trace_config.agg != 'none'){
-            const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
-            const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
-              wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
-              wdg => trace_config[wdg]);
-            thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col);
-          }
-          updateTraceData(dash_idx, chart_idx, trace_idx);
-          updateChart(dash_idx, chart_idx);
-        }
+        const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+        const raw_data = rawData[trace_config.dataSource];
+        refreshTraceFromFilters(dash_idx, chart_idx, trace_idx, trace_config, raw_data);
       }
     }
   }
@@ -1792,7 +1779,6 @@ $('#report').on('click','.update-filter', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   const raw_data = rawData[trace_config.dataSource];
-  const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
   //Build filter config
   trace_config.filter={};
   $(this).siblings('.filter-outer').each(function(){
@@ -1801,22 +1787,7 @@ $('#report').on('click','.update-filter', function(){
       trace_config.filter[$(this).children('.filter-name').text()] = {'filter_type':$(this).children('.filter-type').val(), 'filter_val':filterVal};
     }
   });
-  let allFilters = {...config.filter, ...trace_config.filter}; //start with global, then overwrite with trace
-  thisTraceData.filteredData = applyFilters(raw_data, allFilters);
-  thisTraceData.aggData = thisTraceData.filteredData;
-  if('type' in trace_config &&
-    chartTypes[trace_config.type].required.every((val) => val in trace_config)
-  ){
-    if('agg' in trace_config && trace_config.agg != 'none'){
-      const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
-      const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
-        wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
-        wdg => trace_config[wdg]);
-      thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col);
-    }
-    updateTraceData(dash_idx, chart_idx, trace_idx);
-    updateChart(dash_idx, chart_idx);
-  }
+  refreshTraceFromFilters(dash_idx, chart_idx, trace_idx, trace_config, raw_data);
 });
 
 $('#report').on('change','.add-style', function(){
