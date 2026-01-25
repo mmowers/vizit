@@ -68,6 +68,8 @@ select{
 }
 .dashboard-title-descr-outer:hover .edit-toggle,
 .dashboard-title-descr-outer.is-open .edit-toggle,
+.dashboard-title-descr-outer:hover .duplicate-toggle,
+.dashboard-title-descr-outer.is-open .duplicate-toggle,
 .chart-outer:hover .edit-toggle,
 .chart-outer.is-open .edit-toggle,
 .chart-outer:hover .duplicate-toggle,
@@ -131,12 +133,14 @@ select{
   display: flex;
   gap: 6px;
 }
-.dashboard-title-descr-outer .edit-toggle{
+.dashboard-actions{
   position: absolute;
   top: 4px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 12;
+  display: flex;
+  gap: 6px;
 }
 .chart{
   width: 400px;
@@ -426,7 +430,7 @@ $('#report').on('click', '.edit-toggle', function(e){
   }
 });
 
-$('#report').on('click', '.duplicate-toggle', function(e){
+$('#report').on('click', '.chart-duplicate-toggle', function(e){
   e.stopPropagation();
   const [srcDashIdx, srcChartIdx] = get_idx(this);
   const chartConfig = structuredClone(config.dashboards[srcDashIdx].charts[srcChartIdx]);
@@ -438,6 +442,13 @@ $('#report').on('click', '.duplicate-toggle', function(e){
   addChartBtn.click();
   const newChartIdx = config.dashboards[targetDashIdx].charts.length - 1;
   applyChartConfig(targetDashIdx, newChartIdx, chartConfig);
+});
+
+$('#report').on('click', '.dashboard-duplicate-toggle', function(e){
+  e.stopPropagation();
+  const srcDashIdx = get_idx(this);
+  const dashConfig = structuredClone(config.dashboards[srcDashIdx]);
+  addDashboardFromConfig(dashConfig);
 });
 
 // This was the old way to get the schema (I found it at https://plotly.com/javascript/reference/index/): Uncomment the following section to grab plotly schema (synchronously). First set the global configs to synchronous, then json request, then flip back to async.
@@ -1293,10 +1304,13 @@ $('#report').on('click','.add-dashboard', function(e){
   $(this).before(`
     <div id="dash-${dash_idx}" data-dashboardID="${dash_idx}" class="dashboard-outer">
       <div class="dashboard-title-descr-outer">
+        <div class="dashboard-actions">
+          <span class="edit-toggle" title="Edit dashboard title/description">Edit</span>
+          <span class="duplicate-toggle dashboard-duplicate-toggle" title="Duplicate dashboard">Duplicate</span>
+        </div>
         <div class="dashboard-title-descr">
           <h2 class="dashboard-title">Dashboard ${dash_idx}</h2>
           <p class="dashboard-descr"></p>
-          <span class="edit-toggle" title="Edit dashboard title/description">Edit</span>
         </div>
         <div class="dashboard-title-descr-edit">
           <input type="text" class="dashboard-title-edit" placeholder="Edit dashboard title"><br>
@@ -1344,7 +1358,7 @@ $('#report').on('click','.add-chart', function(e){
     <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-outer chart-placeholder">
       <div class="chart-actions">
         <span class="edit-toggle" title="Edit chart controls">Edit</span>
-        <span class="duplicate-toggle" title="Duplicate chart">Duplicate</span>
+        <span class="duplicate-toggle chart-duplicate-toggle" title="Duplicate chart">Duplicate</span>
       </div>
       <div class="chart-controls">
         <div class="chart-title">Chart ${chart_idx}</div>
@@ -2683,6 +2697,44 @@ function check_and_load_config(){
   }
 }
 
+function applyDashboardConfig(dash_idx, dash_config){
+  if(!dash_config || $.isEmptyObject(dash_config)){
+    return;
+  }
+  if('title' in dash_config || 'description' in dash_config){
+    if('title' in dash_config){
+      $(`[data-dashboardID="${dash_idx}"] .dashboard-title-edit`).val(dash_config.title);
+    }
+    if('description' in dash_config){
+      $(`[data-dashboardID="${dash_idx}"] .dashboard-descr-edit`).val(dash_config.description);
+    }
+    $(`[data-dashboardID="${dash_idx}"] .dashboard-update-title-descr`).click();
+  }
+  if('charts' in dash_config){
+    let ci = 0;
+    for(const cht of dash_config.charts){
+      if($.isEmptyObject(cht)){
+        continue;
+      }
+      if(ci > 0){
+        $(`[data-dashboardID="${dash_idx}"] .add-chart`).click();
+      }
+      applyChartConfig(dash_idx, ci, cht);
+      ci++;
+    }
+  }
+}
+
+function addDashboardFromConfig(dash_config){
+  if(!dash_config || $.isEmptyObject(dash_config)){
+    return;
+  }
+  $('.add-dashboard').click();
+  const newDashIdx = config.dashboards.length - 1;
+  applyDashboardConfig(newDashIdx, dash_config);
+  return newDashIdx;
+}
+
 function applyChartConfig(dash_idx, chart_idx, chart_config){
   if(!chart_config || $.isEmptyObject(chart_config)){
     return;
@@ -2814,35 +2866,11 @@ function load_config(){
   }
   $('#global-config-header').click();
   //Now all dashboard, chart, and trace config.
-  let di = 0;
   for(const db of config_load.dashboards){
     if($.isEmptyObject(db)){
       continue;
     }
-    $('.add-dashboard').click();
-    //Configure title and description of dashboard
-    if('title' in db || 'description' in db){
-      if('title' in db){
-        $(`[data-dashboardID="${di}"] .dashboard-title-edit`).val(db.title);
-      }
-      if('description' in db){
-        $(`[data-dashboardID="${di}"] .dashboard-descr-edit`).val(db.description);
-      }
-      $(`[data-dashboardID="${di}"] .dashboard-update-title-descr`).click();
-    }
-    //Configure charts
-    let ci = 0;
-    for(const cht of db.charts){
-      if($.isEmptyObject(cht)){
-        continue;
-      }
-      if(ci > 0){ //The first one is clicked automatically
-        $(`[data-dashboardID="${di}"] .add-chart`).click();
-      }
-      applyChartConfig(di, ci, cht);
-      ci++;
-    }
-    di++;
+    addDashboardFromConfig(db);
   }
 }
 
