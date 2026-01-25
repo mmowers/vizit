@@ -1301,6 +1301,67 @@ function updateGlobalStyles(data){
   }
 }
 
+function getGlobalOrderInfo(columnName){
+  if(!columnName || $.isEmptyObject(globalStyles) || !(columnName in globalStyles)){
+    return null;
+  }
+  const entries = Object.entries(globalStyles[columnName])
+    .filter(([, meta]) => meta && 'order' in meta)
+    .sort((a, b) => a[1].order - b[1].order);
+  if(entries.length === 0){
+    return null;
+  }
+  const orderedKeys = entries.map(([key]) => key);
+  const allNumeric = orderedKeys.every(key => $.isNumeric(key) && String(Number(key)) === String(key));
+  const orderedValues = allNumeric ? orderedKeys.map(key => Number(key)) : orderedKeys;
+  const orderMap = new Map();
+  for(const [key, meta] of entries){
+    orderMap.set(key, meta.order);
+    if($.isNumeric(key)){
+      orderMap.set(Number(key), meta.order);
+    }
+  }
+  return {orderMap, orderedValues};
+}
+
+function getOrderFromMap(orderMap, value){
+  if(!orderMap){
+    return null;
+  }
+  if(orderMap.has(value)){
+    return orderMap.get(value);
+  }
+  const strVal = String(value);
+  if(orderMap.has(strVal)){
+    return orderMap.get(strVal);
+  }
+  return null;
+}
+
+function sortByGlobalOrder(values, orderMap){
+  if(!orderMap || values.length === 0){
+    return values;
+  }
+  const fallback = new Map();
+  for(let i = 0; i < values.length; i++){
+    fallback.set(values[i], i);
+  }
+  return [...values].sort((a, b) => {
+    const aOrder = getOrderFromMap(orderMap, a);
+    const bOrder = getOrderFromMap(orderMap, b);
+    if(aOrder !== null && bOrder !== null){
+      return aOrder - bOrder;
+    }
+    if(aOrder !== null){
+      return -1;
+    }
+    if(bOrder !== null){
+      return 1;
+    }
+    return fallback.get(a) - fallback.get(b);
+  });
+}
+
 $('#report').on('click','.add-dashboard', function(e){
   e.stopPropagation();
   const shouldOpenFirstChart = !!e.originalEvent;
@@ -2071,6 +2132,39 @@ function updateTraceData(dash_idx, chart_idx, trace_idx){
       }
     }
   }
+  //Apply global ordering to sepWdgUniques and subtraces (row/col/name, etc.)
+  const wdgOrderMaps = {};
+  for(const wdg of sepWdg){
+    const colName = trace_config[wdg];
+    const orderInfo = getGlobalOrderInfo(colName);
+    if(orderInfo){
+      wdgOrderMaps[wdg] = orderInfo.orderMap;
+      sepWdgUniques[wdg] = sortByGlobalOrder(sepWdgUniques[wdg], orderInfo.orderMap);
+    }
+  }
+  if(subtrace_data.length > 1 && Object.keys(wdgOrderMaps).length > 0){
+    subtrace_data.sort((a, b) => {
+      for(let i = 0; i < sepWdg.length; i++){
+        const wdg = sepWdg[i];
+        const orderMap = wdgOrderMaps[wdg];
+        if(!orderMap){
+          continue;
+        }
+        const aOrder = getOrderFromMap(orderMap, a.sepVals[i]);
+        const bOrder = getOrderFromMap(orderMap, b.sepVals[i]);
+        if(aOrder !== null && bOrder !== null){
+          if(aOrder !== bOrder){
+            return aOrder - bOrder;
+          }
+        } else if(aOrder !== null){
+          return -1;
+        } else if(bOrder !== null){
+          return 1;
+        }
+      }
+      return 0;
+    });
+  }
   timings.updateTraceData += (performance.now() - startTime)/1000;
 }
 function updateChart(dash_idx, chart_idx){
@@ -2127,6 +2221,7 @@ function updateChart(dash_idx, chart_idx){
         let sepWdg = chart_data[i].sepWdg;
         let sepWdgUniques = chart_data[i].sepWdgUniques;
         let subtrace_data= chart_data[i].subtraces;
+        const nameOrderInfo = sepWdg.includes('name') ? getGlobalOrderInfo(trace_config.name) : null;
         if(chart_data[i].sepWdg.includes('explode')){
           subtrace_data= subtrace_data.filter(st => st.sepVals[chart_data[i].sepWdg.indexOf('explode')] == explode_val);
         }
@@ -2246,12 +2341,22 @@ function updateChart(dash_idx, chart_idx){
               automargin: true,
               title: {text: `<br>${trace_config.x}${colLabel}`},
             };
+            const xOrderInfo = getGlobalOrderInfo(trace_config.x);
+            if(xOrderInfo){
+              plotlyLayout[layoutXaxis].categoryorder = 'array';
+              plotlyLayout[layoutXaxis].categoryarray = xOrderInfo.orderedValues;
+            }
           }
           if('y' in trace_config){
             plotlyLayout[layoutYaxis] = {
               automargin: true,
               title: {text: `${rowLabel}${trace_config.y}<br>`},
             };
+            const yOrderInfo = getGlobalOrderInfo(trace_config.y);
+            if(yOrderInfo){
+              plotlyLayout[layoutYaxis].categoryorder = 'array';
+              plotlyLayout[layoutYaxis].categoryarray = yOrderInfo.orderedValues;
+            }
           }
           if('marker_size' in trace_config){
             let marker_val_max;
@@ -2289,6 +2394,12 @@ function updateChart(dash_idx, chart_idx){
             } else{
               updateObj(ser, ['marker','color'], globalColors[sepWdgUniques.name.indexOf(ser.name)]);
               updateObj(ser, ['line','color'], globalColors[sepWdgUniques.name.indexOf(ser.name)]);
+            }
+            if(nameOrderInfo){
+              const nameOrder = getOrderFromMap(nameOrderInfo.orderMap, ser.name);
+              if(nameOrder !== null){
+                ser.legendrank = nameOrder;
+              }
             }
           } else{
             ser.name = `Data ${i}`;
@@ -2416,6 +2527,17 @@ function updateChart(dash_idx, chart_idx){
             plotlyData.push(ser);
           }
         }
+      }
+
+      if(plotlyData.some(ser => 'legendrank' in ser)){
+        plotlyData = [...plotlyData].sort((a, b) => {
+          const aRank = ('legendrank' in a) ? a.legendrank : Infinity;
+          const bRank = ('legendrank' in b) ? b.legendrank : Infinity;
+          if(aRank === bRank){
+            return 0;
+          }
+          return aRank - bRank;
+        });
       }
 
       //Update html element width and height
