@@ -1360,8 +1360,6 @@ $('#report').on('click','.add-chart', function(e){
   `;
   $(this).before(html);
   closeEditPanels();
-  const newChart = $(`#dash-${dash_idx}-chart-${chart_idx}`);
-  newChart.addClass('is-open');
   //Automatically click to add the first trace
   $(`#dash-${dash_idx}-chart-${chart_idx} .add-trace`).click();
 });
