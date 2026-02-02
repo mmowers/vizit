@@ -1970,6 +1970,11 @@ $('#report').on('change','.add-style', function(){
     return;
   }
   let thisStyle = customStyle[$(this).val()];
+  //Add logic so an unknown style (e.g. from vizit-config.json) won’t crash the load.
+  if(!thisStyle){
+    $(this).val('none');
+    return;
+  }
   let inputHTML;
   if('input' in thisStyle && thisStyle.input == 'textarea'){
     inputHTML = `<textarea class="style-input" rows="1"></textarea>`;
@@ -2994,16 +2999,6 @@ function applyChartConfig(dash_idx, chart_idx, chart_config){
   if(!chart_config || $.isEmptyObject(chart_config)){
     return;
   }
-  if('style' in chart_config){
-    updateChartStyleSelect(dash_idx, chart_idx);
-    $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .styles-label`).click();
-    for (const key in chart_config['style']){
-      $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .add-style`).val(key).change();
-      $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .style-outer .style-input`).last().val(chart_config['style'][key]).change();
-    }
-    $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .update-style`).click();
-    $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .styles-label`).click();
-  }
   let ti = 0;
   if('traces' in chart_config){
     for(const trc of chart_config.traces){
@@ -3066,6 +3061,16 @@ function applyChartConfig(dash_idx, chart_idx, chart_config){
       }
       ti++;
     }
+  }
+  if('style' in chart_config){
+    updateChartStyleSelect(dash_idx, chart_idx);
+    $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .styles-label`).click();
+    for (const key in chart_config['style']){
+      $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .add-style`).val(key).change();
+      $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .style-outer .style-input`).last().val(chart_config['style'][key]).change();
+    }
+    $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .update-style`).click();
+    $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .styles-label`).click();
   }
 }
 
