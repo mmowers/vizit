@@ -471,6 +471,7 @@ const chartTypes = {
     required: ['y'],
     defaultAgg: 'sum',
     aggCol: 'y',
+    styleCategories: ['axis','axisScale','marker'],
   },
   'dot (continuous color)':{
     engine: 'plotly',
@@ -482,6 +483,7 @@ const chartTypes = {
     required: ['color'],
     defaultAgg: 'sum',
     aggCol: 'color',
+    styleCategories: ['axis','axisScale','marker','colorscaleMarker'],
   },
   'line':{
     engine: 'plotly',
@@ -493,6 +495,7 @@ const chartTypes = {
     required: ['y'],
     defaultAgg: 'sum',
     aggCol: 'y',
+    styleCategories: ['axis','axisScale','line'],
   },
   'line dot':{
     engine: 'plotly',
@@ -504,6 +507,7 @@ const chartTypes = {
     required: ['y'],
     defaultAgg: 'sum',
     aggCol: 'y',
+    styleCategories: ['axis','axisScale','line','marker'],
   },
   'bar':{
     engine: 'plotly',
@@ -514,6 +518,7 @@ const chartTypes = {
     required: ['y'],
     defaultAgg: 'sum',
     aggCol: 'y',
+    styleCategories: ['axis','axisScale','bar'],
     layout:{
       barmode: 'relative',
       legend:{
@@ -530,6 +535,7 @@ const chartTypes = {
     required: ['y','name'],
     defaultAgg: 'sum',
     aggCol: 'y',
+    styleCategories: ['axis','axisScale','bar'],
     layout:{
       barmode: 'group',
     },
@@ -544,6 +550,7 @@ const chartTypes = {
     required: ['x','y','z'],
     defaultAgg: 'sum',
     aggCol: 'z',
+    styleCategories: ['axisScale','zScale','marker'],
   },
   'histogram':{
     engine: 'plotly',
@@ -558,6 +565,7 @@ const chartTypes = {
     required: ['x'],
     defaultAgg: 'none',
     aggCol: 'none',
+    styleCategories: ['axis','axisScale','histogram'],
   },
   'weighted histogram':{
     engine: 'plotly',
@@ -573,6 +581,7 @@ const chartTypes = {
     required: ['x','y'],
     defaultAgg: 'none',
     aggCol: 'none',
+    styleCategories: ['axis','axisScale','histogram'],
   },
   'boxplot':{
     engine: 'plotly',
@@ -590,6 +599,7 @@ const chartTypes = {
     required: ['y'],
     defaultAgg: 'none',
     aggCol: 'none',
+    styleCategories: ['axis','axisScale','boxplot'],
   },
   'violin':{
     engine: 'plotly',
@@ -610,6 +620,7 @@ const chartTypes = {
     required: ['y'],
     defaultAgg: 'none',
     aggCol: 'none',
+    styleCategories: ['axis','axisScale'],
   },
   'US state map (continuous color)':{
     engine:'plotly',
@@ -622,6 +633,7 @@ const chartTypes = {
     defaultAgg: 'sum',
     aggCol: 'z',
     continuousColor: true,
+    styleCategories: ['geo','colorscaleRegion','zScale'],
     layout:{
       width: 500,
       height: 500,
@@ -664,6 +676,7 @@ const chartTypes = {
     defaultAgg: 'sum',
     aggCol: 'z',
     continuousColor: true,
+    styleCategories: ['geo','colorscaleRegion','zScale'],
     layout:{
       width: 500,
       height: 500,
@@ -696,6 +709,7 @@ const chartTypes = {
     required:['lat','lon'],
     defaultAgg: 'none',
     aggCol: 'none',
+    styleCategories: ['geo','marker','dotMax'],
     layout:{
       width: 500,
       height: 500,
@@ -726,6 +740,7 @@ const chartTypes = {
     required:['lat','lon'],
     defaultAgg: 'none',
     aggCol: 'none',
+    styleCategories: ['geo','marker','dotMax','colorscaleMarker'],
     layout:{
       width: 500,
       height: 500,
@@ -758,6 +773,7 @@ const chartTypes = {
     required:['lat','lon','area'],
     defaultAgg: 'none',
     aggCol: 'area',
+    styleCategories: ['geo','line'],
     layout:{
       width: 500,
       height: 500,
@@ -790,6 +806,7 @@ const chartTypes = {
     required:['lat_start','lon_start','lat_end','lon_end'],
     defaultAgg: 'none',
     aggCol: 'none',
+    styleCategories: ['geo','line'],
     layout:{
       width: 500,
       height: 500,
@@ -818,6 +835,7 @@ chartTypes['custom region map (mapbox)'].layout = {
   height: 400,
   mapbox: {style: 'carto-positron'},
 };
+chartTypes['custom region map (mapbox)'].styleCategories = ['mapbox','colorscaleRegion','zScale'];
 
 chartTypes['lat/lon/size dot map (mapbox)'] = structuredClone(chartTypes['lat/lon/size dot map']);
 chartTypes['lat/lon/size dot map (mapbox)'].attr.type = 'scattermapbox';
@@ -827,6 +845,7 @@ chartTypes['lat/lon/size dot map (mapbox)'].layout = {
   dragmode: 'zoom',
   mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
 };
+chartTypes['lat/lon/size dot map (mapbox)'].styleCategories = ['mapbox','marker','dotMax'];
 
 chartTypes['lat/lon/size dot map (continuous color) (mapbox)'] = structuredClone(chartTypes['lat/lon/size dot map (continuous color)']);
 chartTypes['lat/lon/size dot map (continuous color) (mapbox)'].attr.type = 'scattermapbox';
@@ -836,6 +855,7 @@ chartTypes['lat/lon/size dot map (continuous color) (mapbox)'].layout = {
   dragmode: 'zoom',
   mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
 };
+chartTypes['lat/lon/size dot map (continuous color) (mapbox)'].styleCategories = ['mapbox','marker','dotMax','colorscaleMarker'];
 
 chartTypes['lat/lon/area squares map (mapbox)'] = structuredClone(chartTypes['lat/lon/area squares map']);
 chartTypes['lat/lon/area squares map (mapbox)'].attr.type = 'scattermapbox';
@@ -846,6 +866,7 @@ chartTypes['lat/lon/area squares map (mapbox)'].layout = {
   mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
   showlegend: true,
 };
+chartTypes['lat/lon/area squares map (mapbox)'].styleCategories = ['mapbox','line'];
 
 chartTypes['lat/lon/width line map (mapbox)'] = structuredClone(chartTypes['lat/lon/width line map']);
 chartTypes['lat/lon/width line map (mapbox)'].attr.type = 'scattermapbox';
@@ -855,6 +876,7 @@ chartTypes['lat/lon/width line map (mapbox)'].layout = {
   dragmode: 'zoom',
   mapbox: {style: 'carto-positron', center: { lat: 38, lon: -95 }, zoom: 3 },
 };
+chartTypes['lat/lon/width line map (mapbox)'].styleCategories = ['mapbox','line'];
 
 //Every chart can have explode
 for(const k in chartTypes){
@@ -947,112 +969,140 @@ const default_colorbar = {
 //But perhaps assume that all trace properties are common across trace types, although some, e.g. 
 const customStyle = {
   'Chart Caption': {
+    category: 'universal',
     input: 'textarea',
     tooltip: 'Enter figure caption (html allowed)',
   },
   'Plot Width (px)': {
+    category: 'universal',
     type: 'layout',
     path: ['width'],
   },
   'Plot Height (px)': {
+    category: 'universal',
     type: 'layout',
     path: ['height'],
   },
   'Move Chart Up/Down (px)': {
+    category: 'universal',
     tooltip: 'Negative number moves chart up and positive number moves chart down',
   },
   'Move Chart Left/Right (px)': {
+    category: 'universal',
     tooltip: 'Negative number moves chart left and positive number moves chart right',
   },
   'Z-index': {
+    category: 'universal',
     tooltip: 'Enter a number. Higher z-index will bring to front, lower z-index will move to back.',
   },
   'Show Legend': {
+    category: 'universal',
     type: 'layout',
     path: ['showlegend'],
     tooltip: `Enter 'false' here to hide the legend.`,
   },
   'Plot Title': {
+    category: 'universal',
     type: 'layout',
     path: ['title','text'],
     tooltip: 'Manually change the title of the plot.',
   },
   'Plot Title Font Size (pt)': {
+    category: 'universal',
     type: 'layout',
     path: ['title','font','size'],
   },
   'X Title': {
+    category: 'axis',
     type: 'layout',
     path: ['xaxis','title','text'],
   },
   'X Type': {
+    category: 'axis',
     type: 'layout',
     path: ['xaxis','type'],
     tooltip: `E.g. 'date'. More
               <a target="_blank" href="https://plotly.com/javascript/reference/layout/xaxis/#layout-xaxis-type">here</a>.`,
   },
   'X Title Font Size (pt)': {
+    category: 'axis',
     type: 'layout',
     path: ['xaxis','title','font','size'],
   },
   'Show X Tick Labels': {
+    category: 'axis',
     type: 'layout',
     path: ['xaxis','showticklabels'],
     tooltip: `Enter 'false' here to hide x tick labels.`,
   },
   'X Tick Font Size (pt)': {
+    category: 'axis',
     type: 'layout',
     path: ['xaxis','tickfont','size'],
   },
   'X Label Angle (deg)': {
+    category: 'axis',
     type: 'layout',
     path: ['xaxis','tickangle'],
   },
   'X Scale': {
+    category: 'axisScale',
     tooltip: 'Enter a number to scale the x values',
   },
   'X Min': {
+    category: 'axis',
     tooltip: 'Right now, "X Min" only works with "X Max" set as well',
   },
   'X Max': {
+    category: 'axis',
     tooltip: 'Right now, "X Max" only works with "X Min" set as well',
   },
   'Y Title': {
+    category: 'axis',
     type: 'layout',
     path: ['yaxis','title','text'],
   },
   'Y Title Font Size (pt)': {
+    category: 'axis',
     type: 'layout',
     path: ['yaxis','title','font','size'],
   },
   'Show Y Tick Labels': {
+    category: 'axis',
     type: 'layout',
     path: ['yaxis','showticklabels'],
     tooltip: `Enter 'false' here to hide y tick labels.`,
   },
   'Y Tick Font Size (pt)': {
+    category: 'axis',
     type: 'layout',
     path: ['yaxis','tickfont','size'],
   },
   'Y Scale': {
+    category: 'axisScale',
     tooltip: 'Enter a number to scale the y values',
   },
   'Y Min': {
+    category: 'axis',
     tooltip: 'Right now, "Y Min" only works with "Y Max" set as well',
   },
   'Y Max': {
+    category: 'axis',
     tooltip: 'Right now, "Y Max" only works with "Y Min" set as well',
   },
   'Z Scale': {
+    category: 'zScale',
     tooltip: 'Enter a number to scale the z values',
   },
   'Hover Template': {
+    category: 'universal',
     type: 'data',
     path: ['hovertemplate'], //this only gets used for bar charts
     tooltip: `E.g. 'X=%{x}, Y=%{y}, Value=%{text}'. HTML allowed as well. More
               <a target="_blank" href="https://plotly.com/javascript/reference/scatter/#scatter-hovertemplate">here</a>.`,
   },
   'Mapbox Style': {
+    category: 'mapbox',
     type: 'layout',
     path: ['mapbox','style'],
     tooltip: `Free ones are carto-darkmatter, carto-positron, open-street-map,
@@ -1061,95 +1111,114 @@ const customStyle = {
               for more information.`,
   },
   'Mapbox Zoom': {
+    category: 'mapbox',
     type: 'layout',
     path: ['mapbox','zoom'],
     tooltip: `Default is 3`,
   },
   'Mapbox Center Latitude': {
+    category: 'mapbox',
     type: 'layout',
     path: ['mapbox','center','lat'],
     tooltip: `Center latitude of contiguous USA is about 40`,
   },
   'Mapbox Center Longitude': {
+    category: 'mapbox',
     type: 'layout',
     path: ['mapbox','center','lon'],
     tooltip: `Center longitude of contiguous USA is about -98`,
   },
   'Map Projection': {
+    category: 'geo',
     type: 'layout',
     path: ['geo','projection','type'],
     tooltip: `Default is mercator. More <a target="_blank" href="https://plotly.com/javascript/reference/layout/geo/#layout-geo-projection-type">here</a>`,
   },
   'Map Zoom': {
+    category: 'geo',
     type: 'layout',
     path: ['geo','projection','scale'],
     tooltip: `Default is 1. More <a target="_blank" href="https://plotly.com/javascript/reference/layout/geo/#layout-geo-projection-scale">here</a>`,
   },
   'Map Center Latitude': {
+    category: 'geo',
     type: 'layout',
     path: ['geo','center','lat'],
     tooltip: `Center latitude of contiguous USA is about 40`,
   },
   'Map Center Longitude': {
+    category: 'geo',
     type: 'layout',
     path: ['geo','center','lon'],
     tooltip: `Center longitude of contiguous USA is about -98`,
   },
   'Bar Width': {
+    category: 'bar',
     type: 'data',
     path: ['width'], //this only gets used for bar charts
   },
   'Line Width (px)': {
+    category: 'line',
     type: 'data',
     path: ['line','width'],
   },
   'Line Color': {
+    category: 'line',
     type: 'data',
     path: ['line','color'],
     tooltip: `Either a color name like "red" or full rbg like "rgb(255, 0, 0)". More <a target="_blank" href="https://plotly.com/javascript/reference/scatter/#scatter-line-color">here</a>.`,
   },
   'Marker Size (px)': {
+    category: 'marker',
     type: 'data',
     path: ['marker','size'],
     tooltip: 'Default is 6.',
   },
   'Marker Symbol': {
+    category: 'marker',
     type: 'data',
     path: ['marker','symbol'],
     tooltip: `Default is "circle". Other options are "square", "triangle-up" and more options
     <a target="_blank" href="https://plotly.com/javascript/reference/scatter/#scatter-marker-symbol">here</a>.`,
   },
   'Marker Color': {
+    category: 'marker',
     type: 'data',
     path: ['marker','color'],
     tooltip: `Either a color name like "red" or full rbg like "rgb(255, 0, 0)". More <a target="_blank" href="https://plotly.com/javascript/reference/scatter/#scatter-marker-color">here</a>.`,
   },
   'Dot Max Value': {
+    category: 'dotMax',
     tooltip: 'Specify the data value to be assigned the "max" marker size.',
   },
   'Opacity (0-1)': {
+    category: 'universal',
     type: 'data',
     path: ['opacity'],
   },
   'Histogram size of each bin': {
+    category: 'histogram',
     type: 'data',
     path: ['xbins','size'],
     tooltip: `Only for histogram plots. Enter number of x-axis bins.
               More <a target="_blank" href="https://plotly.com/javascript/reference/histogram/#histogram-xbins-size">here</a>.`,
   },
   'Boxplot Points': {
+    category: 'boxplot',
     type: 'data',
     path: ['boxpoints'],
     tooltip: `Only for boxplots. Either "all", "outliers", or "suspectedoutliers". Default is false.
               More <a target="_blank" href="https://plotly.com/javascript/reference/box/#box-boxpoints">here</a>.`,
   },
   'Boxplot Show Whiskers': {
+    category: 'boxplot',
     type: 'data',
     path: ['showwhiskers'],
     tooltip: `Only for boxplots. Default is true.
               More <a target="_blank" href="https://plotly.com/javascript/reference/box/#box-showwhiskers">here</a>.`,
   },
   'Colorscale (marker)': {
+    category: 'colorscaleMarker',
     type: 'data',
     path: ['marker','colorscale'],
     tooltip: `For continuous color markers on maps. e.g. Blackbody, Bluered, Blues,
@@ -1158,19 +1227,23 @@ const customStyle = {
               More <a target="_blank" href="https://plotly.com/javascript/reference/scattergeo/#scattergeo-marker-colorscale">here</a>`,
   },
   'Reverse Colorscale (marker)': {
+    category: 'colorscaleMarker',
     type: 'data',
     path: ['marker','reversescale'],
     tooltip: `Enter 'true' here to reverse the colorscale`,
   },
   'Colorscale Min (marker)': {
+    category: 'colorscaleMarker',
     type: 'data',
     path: ['marker','cmin'],
   },
   'Colorscale Max (marker)': {
+    category: 'colorscaleMarker',
     type: 'data',
     path: ['marker','cmax'],
   },
   'Colorscale (region)': {
+    category: 'colorscaleRegion',
     type: 'data',
     path: ['colorscale'],
     tooltip: `For continuous color region maps. e.g. Blackbody, Bluered, Blues,
@@ -1179,21 +1252,62 @@ const customStyle = {
               More <a target="_blank" href="https://plotly.com/javascript/reference/choropleth/#choropleth-colorscale">here</a>`,
   },
   'Reverse Colorscale (region)': {
+    category: 'colorscaleRegion',
     type: 'data',
     path: ['reversescale'],
     tooltip: `Enter 'true' here to reverse the colorscale`,
   },
   'Colorscale Min (region)': {
+    category: 'colorscaleRegion',
     type: 'data',
     path: ['zmin'],
     tooltip: `This requires Colorscale Max (region)`,
   },
   'Colorscale Max (region)': {
+    category: 'colorscaleRegion',
     type: 'data',
     path: ['zmax'],
     tooltip: `This requires Colorscale Min (region)`,
   },
 };
+
+function getAllowedStyleKeys(dash_idx, chart_idx){
+  const allowedCategories = new Set(['universal']);
+  const chart = config.dashboards?.[dash_idx]?.charts?.[chart_idx];
+  if(chart && Array.isArray(chart.traces)){
+    for(const trace of chart.traces){
+      if(trace && trace.type && trace.type in chartTypes && Array.isArray(chartTypes[trace.type].styleCategories)){
+        for(const category of chartTypes[trace.type].styleCategories){
+          allowedCategories.add(category);
+        }
+      }
+    }
+  }
+  const allowed = new Set();
+  for(const [key, meta] of Object.entries(customStyle)){
+    if(!meta || !meta.category || allowedCategories.has(meta.category)){
+      allowed.add(key);
+    }
+  }
+  return allowed;
+}
+
+function updateChartStyleSelect(dash_idx, chart_idx){
+  const select = $(`#dash-${dash_idx}-chart-${chart_idx} .add-style`);
+  if(select.length === 0){
+    return;
+  }
+  const allowed = getAllowedStyleKeys(dash_idx, chart_idx);
+  const currentVal = select.val();
+  let optionsHtml = `<option value="none">Add Style</option>`;
+  for(const key of Object.keys(customStyle)){
+    if(allowed.has(key)){
+      optionsHtml += `<option value="${key}">${key}</option>`;
+    }
+  }
+  select.html(optionsHtml);
+  select.val('none');
+}
 
 $('#file-input').change(function(evt){
   let newFiles = Array.from(evt.target.files);
@@ -1416,11 +1530,6 @@ $('#report').on('click','.add-chart', function(e, options){
   config.dashboards[dash_idx].charts[chart_idx] = {traces:[]};
   traceData[dash_idx][chart_idx] = [];
   const shouldOpenControls = options && 'openControls' in options ? options.openControls : !!e.originalEvent;
-  //Custom styling
-  let styleOptionsHTML = `<option value="none">Add Style</option>`;
-  for (const key in customStyle){
-    styleOptionsHTML += `<option value="${key}">${key}</option>`;
-  }
   //Build html
   let html = `
     <div id="dash-${dash_idx}-chart-${chart_idx}" data-chartID="${chart_idx}" class="chart-outer chart-placeholder">
@@ -1432,7 +1541,7 @@ $('#report').on('click','.add-chart', function(e, options){
         <div class="chart-title">Chart ${chart_idx}</div>
         <div class="chartstyle-div">
           <label class="styles-label">Change Chart Style</label>
-          <select class="add-style">${styleOptionsHTML}</select>
+          <select class="add-style"><option value="none">Add Style</option></select>
           <button class="update-style">Update Styles</button>
         </div>
         <button class="add-trace">Add Data</button>
@@ -1849,6 +1958,11 @@ $('#report').on('click','.update-filter', function(){
     }
   });
   refreshTraceFromFilters(dash_idx, chart_idx, trace_idx, trace_config, raw_data);
+});
+
+$('#report').on('mousedown focus','.add-style', function(){
+  const [dash_idx, chart_idx] = get_idx(this);
+  updateChartStyleSelect(dash_idx, chart_idx);
 });
 
 $('#report').on('change','.add-style', function(){
@@ -2881,6 +2995,7 @@ function applyChartConfig(dash_idx, chart_idx, chart_config){
     return;
   }
   if('style' in chart_config){
+    updateChartStyleSelect(dash_idx, chart_idx);
     $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .styles-label`).click();
     for (const key in chart_config['style']){
       $(`#dash-${dash_idx}-chart-${chart_idx} .chartstyle-div .add-style`).val(key).change();
