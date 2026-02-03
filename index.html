@@ -2623,17 +2623,21 @@ function updateChart(dash_idx, chart_idx){
               } else if(prop == 'Z Scale'){
                 ser['z'] = ser['z'].map(z => z * propVal);
               } else if(prop == 'X Min'){
+                if(!plotlyLayout[layoutXaxis]) plotlyLayout[layoutXaxis] = {};
                 if(!('range' in plotlyLayout[layoutXaxis])) plotlyLayout[layoutXaxis].range = [null,null];
-                plotlyLayout.xaxis.range[0] = Number(propVal);
+                plotlyLayout[layoutXaxis].range[0] = Number(propVal);
               } else if(prop == 'X Max'){
+                if(!plotlyLayout[layoutXaxis]) plotlyLayout[layoutXaxis] = {};
                 if(!('range' in plotlyLayout[layoutXaxis])) plotlyLayout[layoutXaxis].range = [null,null];
-                plotlyLayout.xaxis.range[1] = Number(propVal);
+                plotlyLayout[layoutXaxis].range[1] = Number(propVal);
               } else if(prop == 'Y Min'){
+                if(!plotlyLayout[layoutYaxis]) plotlyLayout[layoutYaxis] = {};
                 if(!('range' in plotlyLayout[layoutYaxis])) plotlyLayout[layoutYaxis].range = [null,null];
-                plotlyLayout.yaxis.range[0] = Number(propVal);
+                plotlyLayout[layoutYaxis].range[0] = Number(propVal);
               } else if(prop == 'Y Max'){
+                if(!plotlyLayout[layoutYaxis]) plotlyLayout[layoutYaxis] = {};
                 if(!('range' in plotlyLayout[layoutYaxis])) plotlyLayout[layoutYaxis].range = [null,null];
-                plotlyLayout.yaxis.range[1] = Number(propVal);
+                plotlyLayout[layoutYaxis].range[1] = Number(propVal);
               }
             }
           }
