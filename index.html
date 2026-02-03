@@ -1840,7 +1840,8 @@ $('#report').on('change','.add-filter', function(){
   $(this).val('none');
 });
 
-$('body').on('click','.remove-filter', function(){
+$('body').on('click','.remove-filter', function(e){
+  e.stopPropagation();
   let filterName = $(this).siblings('.filter-name').text();
   let updateButton;
   if($(this).closest('#global-filter-config').length > 0){
@@ -1993,7 +1994,8 @@ $('#report').on('change','.add-style', function(){
   $(this).val('none');
 });
 
-$('#report').on('click','.remove-style', function(){
+$('#report').on('click','.remove-style', function(e){
+  e.stopPropagation();
   let styleName = $(this).siblings('.style-name').text();
   let updateButton = $(this).closest('.chartstyle-div').find('.update-style');
   $(this).parent('.style-outer').remove();
