@@ -407,6 +407,7 @@ text.js-plot-link-container{
 <script>
 'use strict';
 let config_load = null;
+let config_applied = false; //prevents duplicate config application on data reloads
 const config = {fileNames:[], dashboards:[]}; //fileNames are sorted alphabetically
 let rawData = {};
 const traceData = []; //traceData[dash_idx][chart_idx][trace_idx] = {filteredData: {col1:[], col2:[],...}, aggData: {col1:[], col2:[],...}, traces: [{x:[], y:[], sepDims:[],...},...]}.
@@ -1355,6 +1356,7 @@ function read_file(newFile, type='file'){
       const reader = new FileReader();
       reader.onload = function(evt) {
         config_load = JSON.parse(evt.target.result);
+        config_applied = false;
         $('#file-list').append(
           `<li data-name="${newFileName}">${newFileName}
             (requires <b>${config_load.fileNames.join(', ')}</b>)</li>`
@@ -1365,6 +1367,7 @@ function read_file(newFile, type='file'){
     } else if(type == 'url'){
       $.getJSON(newFile, function(data){
         config_load = data;
+        config_applied = false;
         $('#file-list').append(
           `<li data-name="${newFileName}">${newFileName}
             (requires <b>${config_load.fileNames.join(', ')}</b>)</li>`
@@ -3094,9 +3097,10 @@ function applyChartConfig(dash_idx, chart_idx, chart_config){
 
 //Function to import specified configurations.
 function load_config(){
-  if (config_load === null) {
+  if (config_load === null || config_applied) {
     return;
   }
+  config_applied = true;
   config.fileNames = config_load.fileNames;
   //Reduce raw data by specified columns
   if('include_cols' in config_load){
@@ -3158,6 +3162,7 @@ const urlSearchParams = new URLSearchParams(window.location.search);
 const params = Object.fromEntries(urlSearchParams.entries());
 if('config' in params){
   config_load = JSON.parse(params.config); //what about decodeURIComponent()? I think it's already decoded.
+  config_applied = false;
   //Load all datasources first
   for(let fileName of config_load.fileNames){
     Papa.parse(fileName, {
@@ -3180,6 +3185,7 @@ if('config' in params){
   //Load config_load if it exists, e.g. if embedded in html via #download-html
   if (config_load !== null) {
     $(document).ready(function(){
+      config_applied = false;
       for(let fileName of config_load.fileNames){
         updateGlobalFilters(fileName);
         $('#file-list').append(`<li data-name="${fileName}">${fileName}</li>`);
