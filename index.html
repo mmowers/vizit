@@ -1724,10 +1724,16 @@ $('#report').on('change','.trace-control', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
   let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-  if($(this).val() == 'none' || $(this).val() == ''){
-    delete trace_config[$(this).attr('data-config')]
+  const configKey = $(this).attr('data-config');
+  const configVal = $(this).val();
+  if(configVal == 'none' || configVal == ''){
+    if(configKey === 'agg'){
+      trace_config[configKey] = 'none';
+    } else{
+      delete trace_config[configKey];
+    }
   } else{
-    trace_config[$(this).attr('data-config')] = $(this).val();
+    trace_config[configKey] = configVal;
   }
   if('type' in trace_config &&
     chartTypes[trace_config.type].required.every((val) => val in trace_config)
