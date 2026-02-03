@@ -158,6 +158,9 @@ select{
   width: 100%;
   max-width: 70vw;
   display: none;
+  box-sizing: border-box;
+  padding: 8px;
+  overflow-wrap: anywhere;
 }
 .chart-outer.is-open .chart-controls{
   display:block;
@@ -169,6 +172,19 @@ select{
 .filter-div,
 #global-config{
   border: 1px solid lightgray;
+}
+.dashboard-title-descr-edit{
+  box-sizing: border-box;
+  padding: 8px;
+  overflow-wrap: anywhere;
+}
+.chart-controls input,
+.chart-controls select,
+.chart-controls textarea,
+.dashboard-title-descr-edit input,
+.dashboard-title-descr-edit textarea{
+  max-width: 100%;
+  box-sizing: border-box;
 }
 #global-config-header,
 .filters-label,
