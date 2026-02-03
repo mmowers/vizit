@@ -263,7 +263,6 @@ text.js-plot-link-container{
 /*no-controls-placeholder*/
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.3/plotly.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
 </head>
@@ -1340,14 +1339,112 @@ $('#add-url-input').click(function(){
   read_file($('#url-input').val(), 'url');
 });
 
+function isNumericString(value){
+  return /^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/.test(value);
+}
+
+function coerceCsvValue(rawValue, wasQuoted){
+  if(wasQuoted){
+    return rawValue;
+  }
+  const trimmed = rawValue.trim();
+  if(trimmed === ''){
+    return null;
+  }
+  const lower = trimmed.toLowerCase();
+  if(lower === 'true'){
+    return true;
+  }
+  if(lower === 'false'){
+    return false;
+  }
+  if(isNumericString(trimmed)){
+    return Number(trimmed);
+  }
+  return rawValue;
+}
+
+function parseCsvText(csvText){
+  if(csvText && csvText.charCodeAt(0) === 0xFEFF){
+    csvText = csvText.slice(1);
+  }
+  const rows = [];
+  let row = [];
+  let field = '';
+  let fieldQuoted = false;
+  let inQuotes = false;
+
+  function pushField(){
+    row.push(coerceCsvValue(field, fieldQuoted));
+    field = '';
+    fieldQuoted = false;
+  }
+
+  function pushRow(){
+    const hasNonEmpty = row.some(val => !(val === null || val === ''));
+    if(hasNonEmpty){
+      rows.push(row);
+    }
+    row = [];
+  }
+
+  for(let i = 0; i < csvText.length; i++){
+    const ch = csvText[i];
+    if(inQuotes){
+      if(ch === '"'){
+        if(csvText[i + 1] === '"'){
+          field += '"';
+          i++;
+        } else{
+          inQuotes = false;
+        }
+      } else{
+        field += ch;
+      }
+      continue;
+    }
+
+    if(ch === '"'){
+      inQuotes = true;
+      fieldQuoted = true;
+    } else if(ch === ','){
+      pushField();
+    } else if(ch === '\n' || ch === '\r'){
+      pushField();
+      pushRow();
+      if(ch === '\r' && csvText[i + 1] === '\n'){
+        i++;
+      }
+    } else{
+      field += ch;
+    }
+  }
+
+  pushField();
+  pushRow();
+  return rows;
+}
+
+function ingestCsvData(fileName, matrix){
+  if(!Array.isArray(matrix) || matrix.length === 0){
+    return;
+  }
+  rawData[fileName] = transpose_to_obj(matrix);
+  updateGlobalFilters(fileName);
+  $('#file-list').append(`<li data-name="${fileName}">${fileName}</li>`);
+  if($(`.standard-file-select option[value="${fileName}"]`).length == 0){
+    $('.standard-file-select').append(`<option value="${fileName}">${fileName}</option>`);
+  }
+  refreshChartsForFile(fileName);
+  check_and_load_config();
+}
+
 function read_file(newFile, type='file'){
-  let newFileName, download;
+  let newFileName;
   if(type == 'url'){
     newFileName = newFile;
-    download = true;
   } else if(type == 'file'){
     newFileName = newFile.name;
-    download = false;
   }
   $(`#file-list li[data-name="${newFileName}"]`).remove();
   //If this is a config json file, we will save it in config_load and load
@@ -1379,24 +1476,22 @@ function read_file(newFile, type='file'){
   //Else load the data file
     if(!config.fileNames.includes(newFileName)) config.fileNames.push(newFileName);
     config.fileNames.sort();
-    Papa.parse(newFile, {
-      worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
-      header: false,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      download: download,
-      complete: function(results, file) {
-        rawData[newFileName] = transpose_to_obj(results.data);
-        updateGlobalFilters(newFileName);
-        $('#file-list').append(`<li data-name="${newFileName}">${newFileName}</li>`);
-        //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
-        if($(`.standard-file-select option[value="${newFileName}"]`).length == 0){
-          $('.standard-file-select').append(`<option value="${newFileName}">${newFileName}</option>`);
-        }
-        refreshChartsForFile(newFileName);
-        check_and_load_config();
+    if(type == 'file'){
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const matrix = parseCsvText(evt.target.result);
+        ingestCsvData(newFileName, matrix);
       }
-    });
+      reader.readAsText(newFile);
+    } else if(type == 'url'){
+      $.ajax({
+        url: newFile,
+        dataType: 'text',
+      }).done(function(text){
+        const matrix = parseCsvText(text);
+        ingestCsvData(newFileName, matrix);
+      });
+    }
   }
 }
 
@@ -3194,20 +3289,12 @@ if('config' in params){
   config_applied = false;
   //Load all datasources first
   for(let fileName of config_load.fileNames){
-    Papa.parse(fileName, {
-      worker: true,
-      header: false,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      download: true,
-      complete: function(results) {
-        rawData[fileName] = transpose_to_obj(results.data);
-        //Do we need below inside of the $(document).ready to prevent this html from showing up in orig_html_str?
-        updateGlobalFilters(fileName);
-        $('#file-list').append(`<li data-name="${fileName}">${fileName}</li>`);
-        $('.standard-file-select').append(`<option value="${fileName}">${fileName}</option>`);
-        check_and_load_config();
-      }
+    $.ajax({
+      url: fileName,
+      dataType: 'text',
+    }).done(function(text){
+      const matrix = parseCsvText(text);
+      ingestCsvData(fileName, matrix);
     });
   }
 } else{
