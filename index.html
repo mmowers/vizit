@@ -148,6 +148,11 @@ select{
   display: inline-block;
   margin: 5px;
 }
+.file-warning{
+  color: #a94442;
+  font-style: italic;
+  font-size: 0.85em;
+}
 .chart-container{
   display: flex;
   flex-wrap: wrap;
@@ -270,6 +275,7 @@ text.js-plot-link-container{
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.3/plotly.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
 </head>
@@ -280,14 +286,14 @@ text.js-plot-link-container{
     <span class="tooltip-parent">
       (?)
       <span class="tooltip">
-        Only csv data is currently allowed, as well as an optional vizit configuration .json file.
+        CSV or Excel (.xlsx/.xls) data is currently allowed, as well as an optional vizit configuration .json file.
       </span>
     </span>
   </span>
   <div id="data-sources">
-    <input type="file" id="file-input" name="file-input" multiple="multiple">
+    <input type="file" id="file-input" name="file-input" multiple="multiple" accept=".csv,.xlsx,.xls,.json">
     <ul id="file-list">(no files selected)</ul>
-    <input id="url-input" type="text" placeholder="URL to csv or json">
+    <input id="url-input" type="text" placeholder="URL to csv, xlsx/xls, or json">
     <button id="add-url-input">Load</button>
     <span class="tooltip-parent">
       (?)
@@ -1346,6 +1352,184 @@ $('#add-url-input').click(function(){
   read_file($('#url-input').val(), 'url');
 });
 
+function normalizeFileName(name){
+  return name.split('?')[0].split('#')[0].toLowerCase();
+}
+
+function getDownloadFileName(base, bookType){
+  let name = base;
+  if(base.includes('/')){
+    name = base.split('/').pop() || base;
+  }
+  name = name.split('?')[0].split('#')[0];
+  if(!name){
+    name = `vizit-data.${bookType}`;
+  }
+  name = name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+  const lower = name.toLowerCase();
+  if(bookType === 'xlsx' && !lower.endsWith('.xlsx')){
+    name += '.xlsx';
+  } else if(bookType === 'xls' && !lower.endsWith('.xls')){
+    name += '.xls';
+  }
+  return name;
+}
+
+function getExcelBookType(base){
+  const lowerBase = normalizeFileName(base);
+  return lowerBase.endsWith('.xls') ? 'xls' : 'xlsx';
+}
+
+function parseExcelLabel(label){
+  if(!label || !label.includes('->')){
+    return null;
+  }
+  const parts = label.split('->');
+  const base = parts[0].trim();
+  const sheetName = parts.slice(1).join('->').trim();
+  if(!base || !sheetName){
+    return null;
+  }
+  const lowerBase = normalizeFileName(base);
+  if(!lowerBase.endsWith('.xlsx') && !lowerBase.endsWith('.xls')){
+    return null;
+  }
+  return {base, sheetName};
+}
+
+function warnSheetSkipped(baseName, sheetName, reason){
+  const label = `${baseName} -> ${sheetName}`;
+  const warnKey = `warn:${label}`;
+  $(`#file-list li[data-name="${warnKey}"]`).remove();
+  $('#file-list').append(`<li data-name="${warnKey}" class="file-warning">${label} (skipped: ${reason})</li>`);
+  console.warn(`Skipped sheet "${sheetName}" in "${baseName}": ${reason}`);
+}
+
+function ingestMatrix(fileLabel, matrix){
+  if(!Array.isArray(matrix) || matrix.length === 0){
+    return false;
+  }
+  const header = matrix[0] || [];
+  const hasHeader = header.some(val => val !== null && val !== undefined && String(val).trim() !== '');
+  if(!hasHeader){
+    return false;
+  }
+  rawData[fileLabel] = transpose_to_obj(matrix);
+  updateGlobalFilters(fileLabel);
+  $('#file-list').append(`<li data-name="${fileLabel}">${fileLabel}</li>`);
+  //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
+  if($(`.standard-file-select option[value="${fileLabel}"]`).length == 0){
+    $('.standard-file-select').append(`<option value="${fileLabel}">${fileLabel}</option>`);
+  }
+  refreshChartsForFile(fileLabel);
+  check_and_load_config();
+  return true;
+}
+
+function ingestSheetMatrix(baseName, sheetName, matrix){
+  if(!Array.isArray(matrix) || matrix.length === 0){
+    warnSheetSkipped(baseName, sheetName, 'empty sheet');
+    return;
+  }
+  const cleaned = matrix.filter(row =>
+    Array.isArray(row) && row.some(val => val !== null && val !== undefined && String(val).trim() !== '')
+  );
+  if(cleaned.length === 0){
+    warnSheetSkipped(baseName, sheetName, 'empty sheet');
+    return;
+  }
+  const label = `${baseName} -> ${sheetName}`;
+  $(`#file-list li[data-name="${label}"]`).remove();
+  $(`#file-list li[data-name="warn:${label}"]`).remove();
+  const ok = ingestMatrix(label, cleaned);
+  if(!ok){
+    warnSheetSkipped(baseName, sheetName, 'missing header row');
+    return;
+  }
+  if(!config.fileNames.includes(label)) config.fileNames.push(label);
+  config.fileNames.sort();
+}
+
+function readXlsxFromArrayBuffer(baseName, arrayBuffer, allowedSheets = null){
+  const workbook = XLSX.read(arrayBuffer, {type: 'array'});
+  const sheetNames = workbook.SheetNames || [];
+  const allowedSet = (allowedSheets && allowedSheets.size) ? allowedSheets : null;
+  const sheetNameSet = new Set(sheetNames);
+  for(const sheetName of sheetNames){
+    if(allowedSet && !allowedSet.has(sheetName)){
+      continue;
+    }
+    const ws = workbook.Sheets[sheetName];
+    if(!ws){
+      continue;
+    }
+    const matrix = XLSX.utils.sheet_to_json(ws, {header: 1, raw: true, defval: null});
+    ingestSheetMatrix(baseName, sheetName, matrix);
+  }
+  if(allowedSet){
+    for(const sheetName of allowedSet){
+      if(!sheetNameSet.has(sheetName)){
+        warnSheetSkipped(baseName, sheetName, 'sheet not found');
+      }
+    }
+  }
+}
+
+function readXlsxFile(file){
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    readXlsxFromArrayBuffer(file.name, evt.target.result);
+  }
+  reader.readAsArrayBuffer(file);
+}
+
+function readXlsxUrl(url){
+  fetch(url)
+    .then(resp => resp.arrayBuffer())
+    .then(buf => {
+      readXlsxFromArrayBuffer(url, buf);
+    });
+}
+
+function parseCsvSource(fileLabel, source, download){
+  Papa.parse(source, {
+    worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
+    header: false,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+    download: download,
+    complete: function(results) {
+      ingestMatrix(fileLabel, results.data);
+    }
+  });
+}
+
+function rawDataToRows(rawD){
+  const cols = Object.keys(rawD);
+  if(cols.length === 0){
+    return [];
+  }
+  const rows = [cols];
+  const dLen = rawD[cols[0]].length;
+  for(let i = 0; i < dLen; i++){
+    const row = [];
+    for(const col of cols){
+      row.push(rawD[col][i]);
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+function downloadBlob(content, fileName){
+  const link = document.createElement("a");
+  link.setAttribute("href", content);
+  link.setAttribute("download", fileName);
+  document.body.appendChild(link); // Required for FF
+  link.click();
+  document.body.removeChild(link);
+}
+
 function read_file(newFile, type='file'){
   let newFileName, download;
   if(type == 'url'){
@@ -1357,7 +1541,8 @@ function read_file(newFile, type='file'){
   }
   $(`#file-list li[data-name="${newFileName}"]`).remove();
   //If this is a config json file, we will save it in config_load and load
-  if(newFileName.endsWith('.json')){
+  const lowerName = normalizeFileName(newFileName);
+  if(lowerName.endsWith('.json')){
     if(type == 'file'){
       const reader = new FileReader();
       reader.onload = function(evt) {
@@ -1381,28 +1566,17 @@ function read_file(newFile, type='file'){
         check_and_load_config();
       });
     }
+  } else if(lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')){
+    if(type == 'file'){
+      readXlsxFile(newFile);
+    } else if(type == 'url'){
+      readXlsxUrl(newFile);
+    }
   } else{
   //Else load the data file
     if(!config.fileNames.includes(newFileName)) config.fileNames.push(newFileName);
     config.fileNames.sort();
-    Papa.parse(newFile, {
-      worker: true, //"worker: true" might make things slower, but it prevents the page from hanging...
-      header: false,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      download: download,
-      complete: function(results, file) {
-        rawData[newFileName] = transpose_to_obj(results.data);
-        updateGlobalFilters(newFileName);
-        $('#file-list').append(`<li data-name="${newFileName}">${newFileName}</li>`);
-        //TODO: When new files are added, update the dynamically added file selects via adding "standard-file-select" class to these widgets
-        if($(`.standard-file-select option[value="${newFileName}"]`).length == 0){
-          $('.standard-file-select').append(`<option value="${newFileName}">${newFileName}</option>`);
-        }
-        refreshChartsForFile(newFileName);
-        check_and_load_config();
-      }
-    });
+    parseCsvSource(newFileName, newFile, download);
   }
 }
 
@@ -2945,30 +3119,51 @@ $('#download-json').click(function(){
   document.body.removeChild(link);
 });
 $('#download-raw-data').click(function(){
-  let rows, rawD, dLen;
+  const excelGroups = new Map();
+  const csvFiles = [];
+
   for(const fileName in rawData){
-    rawD = rawData[fileName];
-    rows = [[]];
-    for(const col in rawD){
-      rows[0].push(col);
-    }
-    dLen = rawD[rows[0][0]].length;
-    for(let i = 0; i < dLen; i++){
-      rows[i+1] = [];
-      for(const col in rawD){
-        rows[i+1].push(rawD[col][i]);
+    const excelInfo = parseExcelLabel(fileName);
+    if(excelInfo){
+      if(!excelGroups.has(excelInfo.base)){
+        excelGroups.set(excelInfo.base, {bookType: getExcelBookType(excelInfo.base), sheets: new Map()});
       }
+      const rows = rawDataToRows(rawData[fileName]);
+      excelGroups.get(excelInfo.base).sheets.set(excelInfo.sheetName, rows);
+    } else{
+      csvFiles.push(fileName);
     }
+  }
+
+  for(const fileName of csvFiles){
+    const rawD = rawData[fileName];
+    const rows = rawDataToRows(rawD);
     let csvStr = rows.map(e => e.join(",")).join("\n");
     let blob = new Blob([csvStr], { type: "text/csv;charset=utf-8" });
     let content = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", content);
     let fileNameOut = fileName.endsWith('.csv') ? fileName : fileName + '.csv';
-    link.setAttribute("download", fileNameOut);
-    document.body.appendChild(link); // Required for FF
-    link.click();
-    document.body.removeChild(link);
+    downloadBlob(content, fileNameOut);
+    URL.revokeObjectURL(content);
+  }
+
+  for(const [base, meta] of excelGroups.entries()){
+    if(meta.sheets.size === 0){
+      continue;
+    }
+    const wb = XLSX.utils.book_new();
+    for(const [sheetName, rows] of meta.sheets.entries()){
+      const safeSheetName = sheetName || 'Sheet1';
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+    }
+    const wbout = XLSX.write(wb, {bookType: meta.bookType, type: 'array'});
+    const mime = meta.bookType === 'xls'
+      ? 'application/vnd.ms-excel'
+      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const blob = new Blob([wbout], {type: mime});
+    const content = URL.createObjectURL(blob);
+    const fileNameOut = getDownloadFileName(base, meta.bookType);
+    downloadBlob(content, fileNameOut);
     URL.revokeObjectURL(content);
   }
 });
@@ -3199,22 +3394,36 @@ if('config' in params){
   config_load = JSON.parse(params.config); //what about decodeURIComponent()? I think it's already decoded.
   config_applied = false;
   //Load all datasources first
+  const excelMap = new Map();
+  const csvFiles = [];
   for(let fileName of config_load.fileNames){
-    Papa.parse(fileName, {
-      worker: true,
-      header: false,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      download: true,
-      complete: function(results) {
-        rawData[fileName] = transpose_to_obj(results.data);
-        //Do we need below inside of the $(document).ready to prevent this html from showing up in orig_html_str?
-        updateGlobalFilters(fileName);
-        $('#file-list').append(`<li data-name="${fileName}">${fileName}</li>`);
-        $('.standard-file-select').append(`<option value="${fileName}">${fileName}</option>`);
-        check_and_load_config();
+    const excelInfo = parseExcelLabel(fileName);
+    if(excelInfo){
+      if(excelMap.has(excelInfo.base) && excelMap.get(excelInfo.base) === null){
+        continue;
       }
-    });
+      if(!excelMap.has(excelInfo.base)){
+        excelMap.set(excelInfo.base, new Set());
+      }
+      excelMap.get(excelInfo.base).add(excelInfo.sheetName);
+      continue;
+    }
+    const lowerName = normalizeFileName(fileName);
+    if(lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')){
+      excelMap.set(fileName, null);
+    } else{
+      csvFiles.push(fileName);
+    }
+  }
+  for(const fileName of csvFiles){
+    parseCsvSource(fileName, fileName, true);
+  }
+  for(const [excelBase, sheetSet] of excelMap.entries()){
+    fetch(excelBase)
+      .then(resp => resp.arrayBuffer())
+      .then(buf => {
+        readXlsxFromArrayBuffer(excelBase, buf, sheetSet);
+      });
   }
 } else{
   //Load config_load if it exists, e.g. if embedded in html via #download-html
