@@ -201,6 +201,28 @@ select{
   max-width: 100%;
   box-sizing: border-box;
 }
+.style-outer{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.style-outer .style-name{
+  white-space: nowrap;
+}
+.style-outer .style-input{
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 140px;
+}
+.style-outer .tooltip-parent,
+.style-outer .remove-style{
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.style-outer .remove-style{
+  margin-left: 0;
+}
 #global-config-header,
 .filters-label,
 .trace-controls-label,
