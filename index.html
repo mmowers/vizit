@@ -1910,6 +1910,7 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
     <select class="agg trace-control" data-config="agg">
       <option value="none">none</option>
       <option value="sum">Sum</option>
+      <option value="avg">Average</option>
     </select>
   `;
   //Add filters
@@ -2362,6 +2363,34 @@ function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
       }
       //some operations will require an additional step here to produce vals array...
       break;
+    case 'avg': {
+      const counts = [];
+      for(let i = 0; i < data_in_len; i++){
+        const idx_vals = idx_cols.map(idx_col => data_in[idx_col][i]);
+        let keyLevel = aggByKey;
+        for(const idx_val of idx_vals){
+          if(!keyLevel.has(idx_val)){
+            keyLevel.set(idx_val, new Map());
+          }
+          keyLevel = keyLevel.get(idx_val);
+        }
+        let idx_out_i = keyLevel.get(aggLeaf);
+        if(idx_out_i === undefined){
+          idx_out_i = vals.length;
+          keyLevel.set(aggLeaf, idx_out_i);
+          idx_out.push(idx_vals);
+          vals.push(data_in[agg_col][i]);
+          counts.push(1);
+        }else{
+          vals[idx_out_i] += data_in[agg_col][i];
+          counts[idx_out_i] += 1;
+        }
+      }
+      for(let i = 0; i < vals.length; i++){
+        vals[i] = vals[i] / counts[i];
+      }
+      break;
+    }
   }
   //now we have idx_out and vals arrays to combine into our output object.
   const data_out = {};
