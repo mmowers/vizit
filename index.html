@@ -2328,21 +2328,33 @@ function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
 
   let startTime = performance.now();
 
-  //Do I split-apply-combine? Right now I'm just applying as i iterate through...
-  const data_in_len = data_in[Object.keys(data_in)[0]].length;
-  let data_in_idx = []; //array of arrays.
-  for(const idx_col of idx_cols){
-    data_in_idx.push(data_in[idx_col]);
+  const data_in_cols = Object.keys(data_in);
+  if(data_in_cols.length === 0){
+    timings.aggregate += (performance.now() - startTime)/1000;
+    return {};
   }
-  data_in_idx = transpose(data_in_idx); //now each row is an index value. But does this transpose take too long?
+  const data_in_len = data_in[data_in_cols[0]].length;
   const idx_out = [];
   const vals = []; //perhaps this should look like {'sum(a)':[]} for agg_type='sum(a)' or {'ave(a)':[],'count':[]} for 'ave(a)' or {'sum(a*b)':[], 'sum(b)':[], 'sum(a*b)/sum(b)':[]} for 'sum(a*b)/sum(b)'? 
+  const aggByKey = new Map();
+  const aggLeaf = Symbol('aggLeaf');
+
   switch(agg_type){
     case 'sum': //TODO: change to 'sum(a)'?
       for(let i = 0; i < data_in_len; i++){
-        let idx_out_i = indexOfArr(idx_out, data_in_idx[i]);
-        if(idx_out_i == -1){
-          idx_out.push(data_in_idx[i]);
+        const idx_vals = idx_cols.map(idx_col => data_in[idx_col][i]);
+        let keyLevel = aggByKey;
+        for(const idx_val of idx_vals){
+          if(!keyLevel.has(idx_val)){
+            keyLevel.set(idx_val, new Map());
+          }
+          keyLevel = keyLevel.get(idx_val);
+        }
+        let idx_out_i = keyLevel.get(aggLeaf);
+        if(idx_out_i === undefined){
+          idx_out_i = vals.length;
+          keyLevel.set(aggLeaf, idx_out_i);
+          idx_out.push(idx_vals);
           vals.push(data_in[agg_col][i]);
         }else{
           vals[idx_out_i] += data_in[agg_col][i]; //because we're simply summing
@@ -2352,11 +2364,15 @@ function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
       break;
   }
   //now we have idx_out and vals arrays to combine into our output object.
-  const arr_out = transpose(idx_out); //another transpose, expensive?
   const data_out = {};
   data_out[agg_col] = vals;
-  for(let i = 0; i < arr_out.length; i++){
-    data_out[idx_cols[i]] = arr_out[i];
+  for(const idx_col of idx_cols){
+    data_out[idx_col] = [];
+  }
+  for(const idx_vals of idx_out){
+    for(let i = 0; i < idx_cols.length; i++){
+      data_out[idx_cols[i]].push(idx_vals[i]);
+    }
   }
   timings.aggregate += (performance.now() - startTime)/1000;
   return data_out;
