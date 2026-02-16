@@ -1915,6 +1915,15 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
     </select>
     <label class="agg-weight-col-label">Weight Column</label>
     <select class="agg-weight-col trace-control" data-config="aggWeightCol">${wdgOptionsHtml}</select>
+    <label>Comparison</label>
+    <select class="comparison trace-control" data-config="comparison">
+      <option value="none">none</option>
+      <option value="difference">Difference</option>
+    </select>
+    <label class="comparison-col-label">Comparison Column</label>
+    <select class="comparison-col trace-control" data-config="comparisonColumn">${wdgOptionsHtml}</select>
+    <label class="compare-to-label">Compare To</label>
+    <select class="compare-to trace-control" data-config="compareTo"><option value="none">none</option></select>
   `;
   //Add filters
   const filtOptionsHtml = `<option value="none">Add Filter</option>` + optionsHtml;
@@ -1930,6 +1939,7 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
   thisTraceDiv.append(html);
   thisTraceDiv.find('.agg').val(chartTypes[chartType].defaultAgg);
   syncAggWeightControl(thisTraceDiv);
+  syncComparisonControls(thisTraceDiv);
 }
 
 function syncAggWeightControl(thisTraceDiv){
@@ -1944,34 +1954,99 @@ function syncAggWeightControl(thisTraceDiv){
   }
 }
 
+function updateCompareToOptions(thisTraceDiv){
+  const comparisonCol = thisTraceDiv.find('.comparison-col').val();
+  const compareToSelect = thisTraceDiv.find('.compare-to');
+  const currentVal = compareToSelect.val();
+  let optionsHtml = `<option value="none">none</option>`;
+  if(comparisonCol && comparisonCol != 'none'){
+    const [dash_idx, chart_idx, trace_idx] = get_idx(thisTraceDiv);
+    const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
+    const uniques = getUniqueColumnValues(comparisonCol, [trace_config.dataSource]);
+    for (const val of uniques){
+      optionsHtml += `<option value="${val}">${val}</option>`;
+    }
+  }
+  compareToSelect.html(optionsHtml);
+  compareToSelect.val(currentVal);
+  if(compareToSelect.val() == null){
+    compareToSelect.val('none');
+  }
+}
+
+function syncComparisonControls(thisTraceDiv){
+  const comparisonSelect = thisTraceDiv.find('.comparison');
+  const comparisonColLabel = thisTraceDiv.find('.comparison-col-label');
+  const comparisonColSelect = thisTraceDiv.find('.comparison-col');
+  const compareToLabel = thisTraceDiv.find('.compare-to-label');
+  const compareToSelect = thisTraceDiv.find('.compare-to');
+  const showComparison = comparisonSelect.val() === 'difference';
+  comparisonColLabel.toggle(showComparison);
+  comparisonColSelect.toggle(showComparison);
+  if(showComparison){
+    updateCompareToOptions(thisTraceDiv);
+  } else{
+    comparisonColSelect.val('none');
+    compareToSelect.html(`<option value="none">none</option>`).val('none');
+  }
+  const showCompareTo = showComparison && comparisonColSelect.val() != 'none';
+  compareToLabel.toggle(showCompareTo);
+  compareToSelect.toggle(showCompareTo);
+}
+
 function updateAggData(thisTraceData, trace_config){
   // Recompute aggregated data for the current trace.
   thisTraceData.aggData = thisTraceData.filteredData;
-  if(!('agg' in trace_config) || trace_config.agg == 'none'){
-    return;
+  const agg_col_key = chartTypes[trace_config.type].aggCol;
+  const agg_col = agg_col_key == 'none' ? undefined : trace_config[agg_col_key];
+  if('agg' in trace_config && trace_config.agg != 'none'){
+    if(trace_config.agg == 'weighted-avg' && !('aggWeightCol' in trace_config)){
+      return;
+    }
+    const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
+      wdg => wdg in trace_config && wdg != agg_col_key).map(
+      wdg => trace_config[wdg]);
+    if(trace_config.comparison == 'difference' &&
+      trace_config.comparisonColumn &&
+      'compareTo' in trace_config &&
+      trace_config.comparisonColumn != agg_col &&
+      !idx_cols.includes(trace_config.comparisonColumn) &&
+      trace_config.comparisonColumn in thisTraceData.filteredData){
+      idx_cols.push(trace_config.comparisonColumn);
+    }
+    const help_cols = trace_config.agg == 'weighted-avg' ? [trace_config.aggWeightCol] : [];
+    thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col, help_cols);
   }
-  if(trace_config.agg == 'weighted-avg' && !('aggWeightCol' in trace_config)){
-    return;
+  if(trace_config.comparison == 'difference' &&
+    trace_config.comparisonColumn &&
+    'compareTo' in trace_config &&
+    agg_col){
+    thisTraceData.aggData = applyDifferenceComparison(thisTraceData.aggData, trace_config.comparisonColumn, trace_config.compareTo, agg_col);
   }
-  const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
-  const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
-    wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
-    wdg => trace_config[wdg]);
-  const help_cols = trace_config.agg == 'weighted-avg' ? [trace_config.aggWeightCol] : [];
-  thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col, help_cols);
 }
 
 $('#report').on('change','.trace-control', function(){
   const [dash_idx, chart_idx, trace_idx] = get_idx(this);
   const thisTraceData = traceData[dash_idx][chart_idx][trace_idx];
+  const thisTraceDiv = $(this).closest('.trace-controls');
   let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   const configKey = $(this).attr('data-config');
   const configVal = $(this).val();
   if(configKey == 'agg'){
-    syncAggWeightControl($(this).closest('.trace-controls'));
+    syncAggWeightControl(thisTraceDiv);
     if(configVal != 'weighted-avg'){
       delete trace_config.aggWeightCol;
     }
+  } else if(configKey == 'comparison'){
+    syncComparisonControls(thisTraceDiv);
+    if(configVal != 'difference'){
+      delete trace_config.comparisonColumn;
+      delete trace_config.compareTo;
+    }
+  } else if(configKey == 'comparisonColumn'){
+    updateCompareToOptions(thisTraceDiv);
+    syncComparisonControls(thisTraceDiv);
+    delete trace_config.compareTo;
   }
   if(configVal == 'none' || configVal == ''){
     if(configKey === 'agg'){
@@ -2035,6 +2110,17 @@ function refreshChartsForFile(fileName){
       }
     }
   }
+}
+
+function getUniqueColumnValues(column, fileNames=[]){
+  let uniques = [];
+  const thisFileNames = fileNames.length === 0 ? Object.keys(rawData) : fileNames;
+  for (const fileName of thisFileNames){
+    if(fileName in rawData && column in rawData[fileName]){
+      uniques = uniques.concat(rawData[fileName][column]);
+    }
+  }
+  return [...new Set(uniques)].sort(customSort);
 }
 
 function getFilterHTML(column){
@@ -2137,20 +2223,13 @@ $('body').on('change','.filter-type', function(){
   }
   if(['include','exclude','select','slider'].includes($(this).val())){
     const filterName = $(this).siblings('.filter-name').text();
-    let uniques = [];
+    let uniques;
     if($(this).closest('#global-filter-config').length > 0){
-      //First concatenate all values from all rawData with this column,
-      //then find uniques
-      for (const fileName in rawData){
-        if(filterName in rawData[fileName]){
-          uniques = uniques.concat(rawData[fileName][filterName])
-        }
-      }
-      uniques = [...new Set(uniques)].sort(customSort);
+      uniques = getUniqueColumnValues(filterName);
     } else{
       const [dash_idx, chart_idx, trace_idx] = get_idx(this);
       const trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
-      uniques = [... new Set(rawData[trace_config.dataSource][filterName])].sort(customSort); //maybe uniques should be evaluated and saved earlier...
+      uniques = getUniqueColumnValues(filterName, [trace_config.dataSource]); //maybe uniques should be evaluated and saved earlier...
     }
     let html;
     if(['include','exclude'].includes($(this).val())){
@@ -2346,10 +2425,14 @@ $('body').on('click','.trace-controls-label', function(){
   // Toggle widget visibility when 'Widgets' is clicked
   const traceDiv = $(this).closest('.trace-controls');
   const baseControls = $(this).siblings('label, .trace-control')
-    .not('.agg-weight-col-label, .agg-weight-col');
+    .not('.agg-weight-col-label, .agg-weight-col, .comparison-col-label, .comparison-col, .compare-to-label, .compare-to');
   baseControls.toggle();
   const showWeightCol = traceDiv.find('.agg').val() == 'weighted-avg' && traceDiv.find('.agg').is(':visible');
+  const showComparisonCol = traceDiv.find('.comparison').val() == 'difference' && traceDiv.find('.comparison').is(':visible');
+  const showCompareTo = showComparisonCol && traceDiv.find('.comparison-col').val() != 'none';
   traceDiv.find('.agg-weight-col-label, .agg-weight-col').toggle(showWeightCol);
+  traceDiv.find('.comparison-col-label, .comparison-col').toggle(showComparisonCol);
+  traceDiv.find('.compare-to-label, .compare-to').toggle(showCompareTo);
 });
 
 function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
@@ -2546,6 +2629,51 @@ function applyFilters(data_in, filters_in = {}){
     }
   }
   timings.applyFilters += (performance.now() - startTime)/1000;
+  return data_out;
+}
+
+function applyDifferenceComparison(data_in, comparison_col, compare_to, agg_col){
+  const data_cols = Object.keys(data_in);
+  if(data_cols.length === 0 ||
+    !comparison_col ||
+    !agg_col ||
+    comparison_col == agg_col ||
+    !(comparison_col in data_in) ||
+    !(agg_col in data_in)){
+    return data_in;
+  }
+  const data_len = data_in[data_cols[0]].length;
+  const idx_cols = data_cols.filter(col => col != comparison_col && col != agg_col);
+  const comparisonByKey = new Map();
+  for(let i = 0; i < data_len; i++){
+    if(data_in[comparison_col][i] != compare_to){
+      continue;
+    }
+    const key = JSON.stringify(idx_cols.map(idx_col => data_in[idx_col][i]));
+    comparisonByKey.set(key, data_in[agg_col][i]);
+  }
+  if(comparisonByKey.size === 0){
+    return data_in;
+  }
+  const data_out = {};
+  for(const col of data_cols){
+    data_out[col] = [];
+  }
+  for(let i = 0; i < data_len; i++){
+    if(data_in[comparison_col][i] == compare_to){
+      continue;
+    }
+    const key = JSON.stringify(idx_cols.map(idx_col => data_in[idx_col][i]));
+    const comparisonVal = Number(comparisonByKey.get(key));
+    const thisVal = Number(data_in[agg_col][i]);
+    for(const col of data_cols){
+      if(col == agg_col){
+        data_out[col].push(Number.isFinite(thisVal) && Number.isFinite(comparisonVal) ? thisVal - comparisonVal : null);
+      } else{
+        data_out[col].push(data_in[col][i]);
+      }
+    }
+  }
   return data_out;
 }
 
@@ -3433,6 +3561,7 @@ function applyChartConfig(dash_idx, chart_idx, chart_config){
         $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .filters-label`).click();
       }
       if('type' in trc && trc.type in chartTypes){
+        const comparisonKeys = ['comparison','comparisonColumn','compareTo'];
         let allWdg = chartTypes[trc.type].wdgTypes.concat(['agg','aggWeightCol']);
         if('customIn' in chartTypes[trc.type]){
           allWdg = allWdg.concat(Object.keys(chartTypes[trc.type].customIn));
@@ -3441,7 +3570,15 @@ function applyChartConfig(dash_idx, chart_idx, chart_config){
           if(chartTypes[trc.type].required.includes(key)){
             continue;
           }
+          if(comparisonKeys.includes(key)){
+            continue;
+          }
           if(allWdg.includes(key)){
+            $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] [data-config="${key}"]`).val(trc[key]).change();
+          }
+        }
+        for (const key of comparisonKeys){
+          if(key in trc){
             $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] [data-config="${key}"]`).val(trc[key]).change();
           }
         }
