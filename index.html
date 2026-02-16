@@ -1911,7 +1911,10 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
       <option value="none">none</option>
       <option value="sum">Sum</option>
       <option value="avg">Average</option>
+      <option value="weighted-avg">Weighted Average</option>
     </select>
+    <label class="agg-weight-col-label">Weight Column</label>
+    <select class="agg-weight-col trace-control" data-config="aggWeightCol">${wdgOptionsHtml}</select>
   `;
   //Add filters
   const filtOptionsHtml = `<option value="none">Add Filter</option>` + optionsHtml;
@@ -1926,6 +1929,36 @@ function buildTraceControls(thisTraceDiv, selectFile, chartType){
   let html = `<div class="trace-ind-controls">${wdgHtml}</div>`;
   thisTraceDiv.append(html);
   thisTraceDiv.find('.agg').val(chartTypes[chartType].defaultAgg);
+  syncAggWeightControl(thisTraceDiv);
+}
+
+function syncAggWeightControl(thisTraceDiv){
+  // Show/hide the weight-column selector based on the selected aggregation mode.
+  const showWeightCol = thisTraceDiv.find('.agg').val() === 'weighted-avg';
+  const weightLabel = thisTraceDiv.find('.agg-weight-col-label');
+  const weightSelect = thisTraceDiv.find('.agg-weight-col');
+  weightLabel.toggle(showWeightCol);
+  weightSelect.toggle(showWeightCol);
+  if(!showWeightCol){
+    weightSelect.val('none');
+  }
+}
+
+function updateAggData(thisTraceData, trace_config){
+  // Recompute aggregated data for the current trace, including weighted-average support.
+  thisTraceData.aggData = thisTraceData.filteredData;
+  if(!('agg' in trace_config) || trace_config.agg == 'none'){
+    return;
+  }
+  if(trace_config.agg == 'weighted-avg' && !('aggWeightCol' in trace_config)){
+    return;
+  }
+  const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
+  const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
+    wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
+    wdg => trace_config[wdg]);
+  const help_cols = trace_config.agg == 'weighted-avg' ? [trace_config.aggWeightCol] : [];
+  thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col, help_cols);
 }
 
 $('#report').on('change','.trace-control', function(){
@@ -1934,6 +1967,12 @@ $('#report').on('change','.trace-control', function(){
   let trace_config = config.dashboards[dash_idx].charts[chart_idx].traces[trace_idx];
   const configKey = $(this).attr('data-config');
   const configVal = $(this).val();
+  if(configKey == 'agg'){
+    syncAggWeightControl($(this).closest('.trace-controls'));
+    if(configVal != 'weighted-avg'){
+      delete trace_config.aggWeightCol;
+    }
+  }
   if(configVal == 'none' || configVal == ''){
     if(configKey === 'agg'){
       trace_config[configKey] = 'none';
@@ -1947,13 +1986,7 @@ $('#report').on('change','.trace-control', function(){
     chartTypes[trace_config.type].required.every((val) => val in trace_config)
   ){
     if($(this).attr('data-config') != 'type' || $.isEmptyObject(traceData[dash_idx][chart_idx][trace_idx])){
-      if('agg' in trace_config && trace_config.agg != 'none'){
-        const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
-        const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
-          wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
-          wdg => trace_config[wdg]);
-        thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col);
-      }
+      updateAggData(thisTraceData, trace_config);
       updateTraceData(dash_idx, chart_idx, trace_idx);
     }
     updateChart(dash_idx, chart_idx);
@@ -1976,13 +2009,7 @@ function refreshTraceFromFilters(dash_idx, chart_idx, trace_idx, trace_config, r
   if('type' in trace_config &&
     chartTypes[trace_config.type].required.every((val) => val in trace_config)
   ){
-    if('agg' in trace_config && trace_config.agg != 'none'){
-      const agg_col = trace_config[chartTypes[trace_config.type].aggCol];
-      const idx_cols = chartTypes[trace_config.type].wdgTypes.filter(
-        wdg => wdg in trace_config && wdg != chartTypes[trace_config.type].aggCol).map(
-        wdg => trace_config[wdg]);
-      thisTraceData.aggData = aggregate(thisTraceData.filteredData, trace_config.agg, idx_cols, agg_col);
-    }
+    updateAggData(thisTraceData, trace_config);
     updateTraceData(dash_idx, chart_idx, trace_idx);
     updateChart(dash_idx, chart_idx);
   }
@@ -2316,8 +2343,13 @@ $('body').on('click','.filters-label, .styles-label, .filter-name, .trace-title'
 });
 
 $('body').on('click','.trace-controls-label', function(){
-  $(this).siblings('label').toggle();
-  $(this).siblings('.trace-control').toggle();
+  // Toggle widget visibility while keeping the weight selector tied to weighted-average mode.
+  const traceDiv = $(this).closest('.trace-controls');
+  const baseControls = $(this).siblings('label, .trace-control')
+    .not('.agg-weight-col-label, .agg-weight-col');
+  baseControls.toggle();
+  const showWeightCol = traceDiv.find('.agg').val() == 'weighted-avg' && traceDiv.find('.agg').is(':visible');
+  traceDiv.find('.agg-weight-col-label, .agg-weight-col').toggle(showWeightCol);
 });
 
 function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
@@ -2388,6 +2420,43 @@ function aggregate(data_in, agg_type, idx_cols, agg_col, help_cols=[]){
       }
       for(let i = 0; i < vals.length; i++){
         vals[i] = vals[i] / counts[i];
+      }
+      break;
+    }
+    case 'weighted-avg': {
+      const weight_col = help_cols[0];
+      if(!weight_col || !(weight_col in data_in)){
+        break;
+      }
+      const weightSums = [];
+      for(let i = 0; i < data_in_len; i++){
+        const aggVal = Number(data_in[agg_col][i]);
+        const weightVal = Number(data_in[weight_col][i]);
+        if(!Number.isFinite(aggVal) || !Number.isFinite(weightVal)){
+          continue;
+        }
+        const idx_vals = idx_cols.map(idx_col => data_in[idx_col][i]);
+        let keyLevel = aggByKey;
+        for(const idx_val of idx_vals){
+          if(!keyLevel.has(idx_val)){
+            keyLevel.set(idx_val, new Map());
+          }
+          keyLevel = keyLevel.get(idx_val);
+        }
+        let idx_out_i = keyLevel.get(aggLeaf);
+        if(idx_out_i === undefined){
+          idx_out_i = vals.length;
+          keyLevel.set(aggLeaf, idx_out_i);
+          idx_out.push(idx_vals);
+          vals.push(aggVal * weightVal);
+          weightSums.push(weightVal);
+        }else{
+          vals[idx_out_i] += aggVal * weightVal;
+          weightSums[idx_out_i] += weightVal;
+        }
+      }
+      for(let i = 0; i < vals.length; i++){
+        vals[i] = weightSums[i] == 0 ? null : vals[i] / weightSums[i];
       }
       break;
     }
@@ -3364,7 +3433,7 @@ function applyChartConfig(dash_idx, chart_idx, chart_config){
         $(`#dash-${dash_idx}-chart-${chart_idx} [data-traceID="${ti}"] .filters-label`).click();
       }
       if('type' in trc && trc.type in chartTypes){
-        let allWdg = chartTypes[trc.type].wdgTypes.concat(['agg']);
+        let allWdg = chartTypes[trc.type].wdgTypes.concat(['agg','aggWeightCol']);
         if('customIn' in chartTypes[trc.type]){
           allWdg = allWdg.concat(Object.keys(chartTypes[trc.type].customIn));
         }
