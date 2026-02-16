@@ -1945,7 +1945,7 @@ function syncAggWeightControl(thisTraceDiv){
 }
 
 function updateAggData(thisTraceData, trace_config){
-  // Recompute aggregated data for the current trace, including weighted-average support.
+  // Recompute aggregated data for the current trace.
   thisTraceData.aggData = thisTraceData.filteredData;
   if(!('agg' in trace_config) || trace_config.agg == 'none'){
     return;
@@ -2343,7 +2343,7 @@ $('body').on('click','.filters-label, .styles-label, .filter-name, .trace-title'
 });
 
 $('body').on('click','.trace-controls-label', function(){
-  // Toggle widget visibility while keeping the weight selector tied to weighted-average mode.
+  // Toggle widget visibility when 'Widgets' is clicked
   const traceDiv = $(this).closest('.trace-controls');
   const baseControls = $(this).siblings('label, .trace-control')
     .not('.agg-weight-col-label, .agg-weight-col');
